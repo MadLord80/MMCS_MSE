@@ -5,8 +5,19 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MMCS_Music_Server_Editor"
         mc:Ignorable="d"
-        Title="MainWindow" Height="350" Width="525">
+        Title="MMCS Music Server Editor" Height="515.094" Width="1166.052" WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
+    <Window.Resources>
+        <ResourceDictionary Source="ExpressionDark.xaml"/>
+    </Window.Resources>
     <Grid>
-        
+        <Menu x:Name="menu" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="1160">
+            <MenuItem Header="Open">
+                <MenuItem Header="AVUNIT directory" Margin="0,0,-56,0" HorizontalAlignment="Left" Width="185" Padding="4,3,2,3" Click="MenuItem_Click"/>
+            </MenuItem>
+        </Menu>
+        <ListBox x:Name="listBox" HorizontalAlignment="Left" Height="316" Margin="10,145,0,0" VerticalAlignment="Top" Width="235">
+            <ListBoxItem Content="Group1" Foreground="White"/>
+        </ListBox>
+        <Label x:Name="label" Content="Groups" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FF040404" FontWeight="Bold"/>
     </Grid>
 </Window>
