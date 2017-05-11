@@ -9,14 +9,14 @@
     <Window.Resources>
         <ResourceDictionary Source="ExpressionDark.xaml"/>
     </Window.Resources>
-    <Grid>
-        <Menu x:Name="menu" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="1160">
+    <Grid Background="#FF58585D">
+        <Menu x:Name="menu" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="1160" Background="#FF333333">
             <MenuItem Header="Open">
                 <MenuItem Header="AVUNIT directory" Margin="0,0,-56,0" HorizontalAlignment="Left" Width="185" Padding="4,3,2,3" Click="MenuItem_Click"/>
             </MenuItem>
         </Menu>
-        <Label x:Name="label" Content="Groups" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FF040404" FontWeight="Bold"/>
-        <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="10,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD">
+        <Label x:Name="label" Content="Groups" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
+        <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="10,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" MouseUp="GroupsListView_onclick">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Id" DisplayMemberBinding="{Binding id}" Width="30"/>
@@ -25,7 +25,7 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Label x:Name="label_Copy" Content="Lists" HorizontalAlignment="Left" Margin="417,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FF040404" FontWeight="Bold"/>
+        <Label x:Name="label_Copy" Content="Lists" HorizontalAlignment="Left" Margin="417,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
         <ListView x:Name="ListsListView" HorizontalAlignment="Left" Height="310" Margin="417,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD">
             <ListView.View>
                 <GridView>

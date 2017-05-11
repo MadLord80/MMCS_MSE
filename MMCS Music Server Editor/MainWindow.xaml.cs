@@ -113,6 +113,20 @@ namespace MMCS_MSE
                 GroupsListView.Items.Add(new {id = group_id, name = group_name, lists = lists_cnt});
             }
         }
-        
+
+        private void GroupsListView_onclick(object sender, MouseButtonEventArgs e)
+        {
+            var listView = e.Source as System.Windows.Controls.ListView;
+            if (listView != null)
+            {
+                if (listView.SelectedItem != null)
+                {
+                    //object item = listView.Items.GetItemAt(listView.Items.IndexOf(listView.SelectedItem));
+                    object lbi = (listView.SelectedItem as {     });
+                    
+                    System.Windows.MessageBox.Show(lbi["name"]);                    
+                }
+            }
+        }
     }
 }
