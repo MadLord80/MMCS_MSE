@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -49,6 +50,7 @@ namespace MMCS_MSE
                     return;
                 }
                 fill_groups_table(info_path);
+                
 
                 //string album_path = mserver.get_ALBUMpath();
                 //if (! File.Exists(album_path))
@@ -64,30 +66,53 @@ namespace MMCS_MSE
             FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read);
             byte[] temp = new byte[0];
 
-            //fs.Position = mserver.cnt_disks_offset;
-            //int disks_count = fs.ReadByte();
-
-            ListBoxItem row = new ListBoxItem();
+            fs.Position = mserver.cnt_disks_offset;
+            int disks_count = fs.ReadByte();
+            
+            Hashtable groups_lists = new Hashtable();
+            for (int i = 0; i < disks_count; i++)
+            {
+                fs.Position = mserver.lists_offset + i * mserver.list_length + mserver.list_length - 1;
+                uint gid = (uint)fs.ReadByte();
+                if (groups_lists.ContainsKey(gid))
+                {
+                    groups_lists[gid] = Convert.ToUInt32(groups_lists[gid]) + 1;
+                }
+                else
+                {
+                    groups_lists.Add(gid, 1);
+                }
+            }
 
             fs.Position = mserver.groups_offset;
-            byte[] group_desc = new byte[mserver.groups_length];
+            byte[] group_desc = new byte[mserver.group_length];
             for (int i = 1; i <= mserver.cnt_groups; i++)
             {
                 fs.Read(group_desc, 0, group_desc.Length);
                 hf.spliceByteArray(group_desc, ref temp, 0, 4);
-                if (BitConverter.ToUInt32(temp, 0) == 0x010000ff) break;
+                uint group_id = BitConverter.ToUInt32(temp, 0);
+                if (group_id == 0x010000ff) break;
 
+                string group_name = "";
                 hf.spliceByteArray(group_desc, ref temp, 4, 4);
                 //←[tbl:NNN]
                 if (BitConverter.ToUInt32(temp,0) == 0x62745b1b)
                 {
-                    hf.spliceByteArray(group_desc, ref temp, 10, 3);
-                    if (hf.ByteArrayToString(temp) == "171")
-                    {
-                        //row.ad
-                    }
+                    string tbl_id = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 10, 3));
+                    group_name = mserver.get_TBLdata(Convert.ToUInt32(tbl_id));
                 }
+                else
+                {
+                    group_name = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 4, group_desc.Length - 4), "iso-8859-5");
+                    //\x00 - end string
+                    int end_string_id = group_name.IndexOf('\x00');
+                    group_name = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 4, end_string_id), "iso-8859-5");
+                }
+
+                uint lists_cnt = (groups_lists.ContainsKey(group_id)) ? Convert.ToUInt32(groups_lists[group_id]) : 0;
+                GroupsListView.Items.Add(new {id = group_id, name = group_name, lists = lists_cnt});
             }
         }
+        
     }
 }

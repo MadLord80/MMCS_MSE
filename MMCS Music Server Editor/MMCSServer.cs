@@ -22,7 +22,9 @@ namespace MMCS_MSE
         public int cnt_disks_offset = 0x24;
         public int cnt_groups = 100;
         public int groups_offset = 0x28;
-        public int groups_length = 0x84;
+        public int group_length = 0x84;
+        public int lists_offset;
+        public int list_length = 8;
 
         public MMCSServer(string dir)
         {
@@ -33,6 +35,9 @@ namespace MMCS_MSE
             HIST_path = INFO_path + "\\HIST";
             RECORD_path = INFO_path + "\\RECORD";
             TITLE_path = INFO_path + "\\TITLE";
+
+            //INDEX
+            lists_offset = groups_offset + cnt_groups * group_length;
         }
 
         public string get_ALBUMpath()
@@ -45,6 +50,16 @@ namespace MMCS_MSE
         {
             string path = main_dir + INFO_path + "\\INDEX.lst";
             return path;
+        }
+
+        public string get_TBLdata(uint id)
+        {
+            string data = "";
+            if (id == 171) return "Оригинальные компакт-диски";
+            if (id == 172) return "Мои лучшие файлы";
+            if (id == 173) return "Часто воспроизводимые файлы";
+            if (id == 174) return "Любимые файлы";
+            return data;
         }
     }
 }

@@ -15,7 +15,25 @@
                 <MenuItem Header="AVUNIT directory" Margin="0,0,-56,0" HorizontalAlignment="Left" Width="185" Padding="4,3,2,3" Click="MenuItem_Click"/>
             </MenuItem>
         </Menu>
-        <ListBox x:Name="GroupsListbox" HorizontalAlignment="Left" Height="316" Margin="10,145,0,0" VerticalAlignment="Top" Width="235"/>
         <Label x:Name="label" Content="Groups" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FF040404" FontWeight="Bold"/>
+        <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="10,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Id" DisplayMemberBinding="{Binding id}" Width="30"/>
+                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding name}" Width="240"/>
+                    <GridViewColumn DisplayMemberBinding="{Binding lists}" Header="Lists" Width="50"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+        <Label x:Name="label_Copy" Content="Lists" HorizontalAlignment="Left" Margin="417,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FF040404" FontWeight="Bold"/>
+        <ListView x:Name="ListsListView" HorizontalAlignment="Left" Height="310" Margin="417,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Id" DisplayMemberBinding="{Binding id}" Width="30"/>
+                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding name}" Width="240"/>
+                    <GridViewColumn DisplayMemberBinding="{Binding songs}" Header="Tracks" Width="50"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
     </Grid>
 </Window>

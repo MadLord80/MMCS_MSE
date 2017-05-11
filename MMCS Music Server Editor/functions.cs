@@ -14,6 +14,15 @@ namespace MMCS_MSE
             return outstr;
         }
 
+        public string ByteArrayToString(byte[] bytes, string code_page)
+        {
+            string outstr = "";
+            Encoding encode = Encoding.GetEncoding(code_page);
+            outstr = new string(encode.GetChars(bytes));
+
+            return outstr;
+        }
+
         public byte[] StringToByteArray(string str, int length)
         {
             byte[] outarr = new byte[length];
