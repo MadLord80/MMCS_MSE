@@ -15,25 +15,38 @@
                 <MenuItem Header="AVUNIT directory" Margin="0,0,-56,0" HorizontalAlignment="Left" Width="185" Padding="4,3,2,3" Click="MenuItem_Click"/>
             </MenuItem>
         </Menu>
-        <Label x:Name="label" Content="Groups" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
+        <Label x:Name="label" Content="Groups (max 100)" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
         <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="10,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" MouseUp="GroupsListView_onclick">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Id" DisplayMemberBinding="{Binding id}" Width="30"/>
-                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding name}" Width="240"/>
-                    <GridViewColumn DisplayMemberBinding="{Binding lists}" Header="Lists" Width="50"/>
+                    <GridViewColumn Header="Id" DisplayMemberBinding="{Binding Id}" Width="30"/>
+                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="240"/>
+                    <GridViewColumn DisplayMemberBinding="{Binding Lists}" Header="Lists" Width="50"/>
                 </GridView>
             </ListView.View>
         </ListView>
-        <Label x:Name="label_Copy" Content="Lists" HorizontalAlignment="Left" Margin="417,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
+        <Label x:Name="label_Copy" Content="Lists (max 100)" HorizontalAlignment="Left" Margin="417,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
         <ListView x:Name="ListsListView" HorizontalAlignment="Left" Height="310" Margin="417,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Id" DisplayMemberBinding="{Binding id}" Width="30"/>
-                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding name}" Width="240"/>
-                    <GridViewColumn DisplayMemberBinding="{Binding songs}" Header="Tracks" Width="50"/>
+                    <GridViewColumn Header="Id" DisplayMemberBinding="{Binding Id}" Width="30"/>
+                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="240"/>
+                    <GridViewColumn DisplayMemberBinding="{Binding Songs}" Header="Tracks" Width="50"/>
                 </GridView>
             </ListView.View>
         </ListView>
+        <RadioButton x:Name="radioButton" Content="J-01" HorizontalAlignment="Left" Margin="10,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy" Content="J-03" HorizontalAlignment="Left" Margin="58,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy1" Content="N-04" HorizontalAlignment="Left" Margin="111,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy2" Content="N-04rus" HorizontalAlignment="Left" Margin="10,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy3" Content="N-04rus empty" HorizontalAlignment="Left" Margin="87,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy4" Content="N-04rus - 2s" HorizontalAlignment="Left" Margin="193,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy5" Content="N-04rus newcd" HorizontalAlignment="Left" Margin="291,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy6" Content="N-04rus necd - 1d" HorizontalAlignment="Left" Margin="409,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy7" Content="N-04rus newcd only" HorizontalAlignment="Left" Margin="542,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy8" Content="N-04rus newcd delother" HorizontalAlignment="Left" Margin="686,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy9" Content="R-03 empty" HorizontalAlignment="Left" Margin="164,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton1" Content="iso-8859-5" HorizontalAlignment="Left" Margin="966,46,0,0" VerticalAlignment="Top" Checked="radioButton1_Checked"/>
+        <RadioButton x:Name="radioButton1_Copy" Content="shift_jis" HorizontalAlignment="Left" Margin="966,70,0,0" VerticalAlignment="Top" Checked="radioButton1_Checked"/>
     </Grid>
 </Window>
