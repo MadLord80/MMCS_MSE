@@ -73,7 +73,9 @@ namespace MMCS_MSE
             fs.Position = mserver.cnt_disks_offset;
             int lists_count = fs.ReadByte();
             
-            Hashtable groups_lists = new Hashtable();
+            //Hashtable groups_lists = new Hashtable();
+			Dictionary<uint, byte[][]> gl = new Dictionary<uint, byte[][]>();
+
             for (int i = 0; i < lists_count; i++)
             {
                 fs.Position = mserver.lists_offset + i * mserver.list_length + mserver.list_length - 1;
@@ -82,13 +84,18 @@ namespace MMCS_MSE
 				byte[] lid = new byte[mserver.listId_length];
 				fs.Position = mserver.lists_offset + i * mserver.list_length;
 				fs.Read(lid, 0, lid.Length);
-				if (groups_lists.ContainsKey(gid))
+				//if (groups_lists.ContainsKey(gid))
+				if (gl.ContainsKey(gid))
                 {
-                    groups_lists[gid] = Convert.ToUInt32(groups_lists[gid]) + 1;
-                }
+					//groups_lists[gid] = Convert.ToUInt32(groups_lists[gid]) + 1;
+					Array.Resize(ref gl[gid], gl[gid][0].Length + 1);
+					gl[gid][i] = lid;
+
+				}
                 else
                 {
-                    //groups_lists.Add(gid, new byte[1, 4] {lid});
+                    //groups_lists.Add(gid, new byte[][] {lid});
+					gl.Add(gid, new byte[][] { lid });
                 }
             }
 
@@ -114,8 +121,8 @@ namespace MMCS_MSE
                     group_name = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 4, group_desc.Length - 4), codePage);
                 }
 
-                uint lists_cnt = (groups_lists.ContainsKey(group_id)) ? Convert.ToUInt32(groups_lists[group_id]) : 0;
-                groups.Add(new MSGroup(group_id, group_name, lists_cnt));
+                //uint lists_cnt = (groups_lists.ContainsKey(group_id)) ? Convert.ToUInt32(groups_lists[group_id]) : 0;
+                //groups.Add(new MSGroup(group_id, group_name, lists_cnt));
             }
 			fs.Close();
         }
