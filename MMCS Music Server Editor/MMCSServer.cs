@@ -32,12 +32,14 @@ namespace MMCS_MSE
 		public int lists_size_offset = 0x24;
 		public int list_size_length = 4;
 		public int alists_offset;
-		//first 4 byte in list desc
+		//first 4 byte in list desc - unknown
 		public int a_unknown_length = 4;
 		public int listId_length = 4;
 		public int listsongs_length = 4;
-		public int listName_offset = 0x14;
 		public int listName_length = 0x180;
+		public int list_desc_length = 0x194;
+		public int listName_offset = 0x14;
+		public int asong_data_length = 16;
 
 		public string MainDir
 		{
@@ -54,7 +56,7 @@ namespace MMCS_MSE
             //INDEX
             lists_offset = groups_offset + cnt_groups * group_length;
 			//ALBUM
-			alists_offset = lists_offset + max_lists * list_size_length;
+			alists_offset = lists_size_offset + max_lists * list_size_length;
 		}
 
 		public string get_ALBUMpath()
@@ -82,13 +84,13 @@ namespace MMCS_MSE
 
     class MSGroup : INotifyPropertyChanged
     {
-        private uint id;
+        private int id;
         private string name;
-		private uint[] lists;
+		private int[] lists;
         
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public uint Id
+        public int Id
         {
             get { return this.id; }
             set
@@ -108,7 +110,7 @@ namespace MMCS_MSE
                 OnPropertyChanged("Name");
             }
         }
-        public uint[] Lists
+        public int[] Lists
         {
             get { return this.lists; }
             set
@@ -118,7 +120,7 @@ namespace MMCS_MSE
             }
         }
 
-        public MSGroup(uint gid, string gname, uint[] glists)
+        public MSGroup(int gid, string gname, int[] glists)
         {
             this.id = gid;
             //\x00 - end string
@@ -138,14 +140,14 @@ namespace MMCS_MSE
 
 	class MSList : INotifyPropertyChanged
 	{
-		private uint id;
+		private int id;
 		private string name;
-		private uint songs_cnt;
-		private byte[,] songs;
+		private Dictionary<int, int[]> songs = new Dictionary<int, int[]>();
+		private int songs_count;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public uint Id
+		public int Id
 		{
 			get { return this.id; }
 			set
@@ -165,16 +167,7 @@ namespace MMCS_MSE
 				OnPropertyChanged("Name");
 			}
 		}
-		public uint SongsCnt
-		{
-			get { return this.songs_cnt; }
-			set
-			{
-				this.songs_cnt = value;
-				OnPropertyChanged("SongsCnt");
-			}
-		}
-		public byte[,] Songs
+		public Dictionary<int, int[]> Songs
 		{
 			get { return this.songs; }
 			set
@@ -183,15 +176,28 @@ namespace MMCS_MSE
 				OnPropertyChanged("Songs");
 			}
 		}
+		public int SongsCnt
+		{
+			get { return this.songs_count; }
+			set
+			{
+				this.songs_count = value;
+				OnPropertyChanged("SongsCnt");
+			}
+		}
 
-		public MSList(uint lid, string lname, uint lscnt, byte[,] lsongs)
+		public MSList(int lid, string lname, Dictionary<int, int[]> lsongs)
 		{
 			this.id = lid;
 			//\x00 - end string
 			int null_offset = lname.IndexOf('\x00');
 			this.name = (null_offset != -1) ? lname.Substring(0, null_offset) : lname;
-			this.songs_cnt = lscnt;
 			this.songs = lsongs;
+			this.songs_count = 0;
+			foreach (KeyValuePair<int, int[]> disk in lsongs)
+			{
+				this.songs_count += disk.Value.Length;
+			}
 		}
 
 		protected void OnPropertyChanged(string name)

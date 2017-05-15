@@ -21,7 +21,7 @@
                 <GridView>
                     <GridViewColumn Header="Id" DisplayMemberBinding="{Binding Id}" Width="30"/>
                     <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="240"/>
-                    <GridViewColumn DisplayMemberBinding="{Binding Lists}" Header="Lists" Width="50"/>
+                    <GridViewColumn DisplayMemberBinding="{Binding Lists.Length}" Header="Lists" Width="50"/>
                 </GridView>
             </ListView.View>
         </ListView>
@@ -31,7 +31,7 @@
                 <GridView>
                     <GridViewColumn Header="Id" DisplayMemberBinding="{Binding Id}" Width="30"/>
                     <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="240"/>
-                    <GridViewColumn DisplayMemberBinding="{Binding Songs}" Header="Tracks" Width="50"/>
+                    <GridViewColumn DisplayMemberBinding="{Binding SongsCnt}" Header="Tracks" Width="50"/>
                 </GridView>
             </ListView.View>
         </ListView>

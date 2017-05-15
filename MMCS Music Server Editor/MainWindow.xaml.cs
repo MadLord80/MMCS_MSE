@@ -73,29 +73,28 @@ namespace MMCS_MSE
             fs.Position = mserver.cnt_disks_offset;
             int lists_count = fs.ReadByte();
             
-            //Hashtable groups_lists = new Hashtable();
-			Dictionary<uint, byte[][]> gl = new Dictionary<uint, byte[][]>();
-
+			Dictionary<int, int[]> gl = new Dictionary<int, int[]>();
             for (int i = 0; i < lists_count; i++)
             {
-                fs.Position = mserver.lists_offset + i * mserver.list_length + mserver.list_length - 1;
-                uint gid = (uint)fs.ReadByte();
+                fs.Position = mserver.lists_offset + i * mserver.list_length + mserver.list_length - 4;
+                int list_type = fs.ReadByte();
+				fs.Position = mserver.lists_offset + i * mserver.list_length + mserver.list_length - 1;
+				int gid = fs.ReadByte();
 
-				byte[] lid = new byte[mserver.listId_length];
-				fs.Position = mserver.lists_offset + i * mserver.list_length;
-				fs.Read(lid, 0, lid.Length);
-				//if (groups_lists.ContainsKey(gid))
+				int id_offset = (list_type == 0) ? 3 : 0;
+				fs.Position = mserver.lists_offset + i * mserver.list_length + id_offset;
+				int lid = fs.ReadByte();
 				if (gl.ContainsKey(gid))
                 {
-					//groups_lists[gid] = Convert.ToUInt32(groups_lists[gid]) + 1;
-					Array.Resize(ref gl[gid], gl[gid][0].Length + 1);
-					gl[gid][i] = lid;
+					int[] lists = gl[gid];
+					Array.Resize(ref lists, lists.Length + 1);
+					lists[lists.Length - 1] = lid;
+					gl[gid] = lists;
 
 				}
                 else
                 {
-                    //groups_lists.Add(gid, new byte[][] {lid});
-					gl.Add(gid, new byte[][] { lid });
+					gl.Add(gid, new int[] {lid});
                 }
             }
 
@@ -105,7 +104,7 @@ namespace MMCS_MSE
             {
                 fs.Read(group_desc, 0, group_desc.Length);
                 hf.spliceByteArray(group_desc, ref temp, 0, 4);
-                uint group_id = BitConverter.ToUInt32(temp, 0);
+                int group_id = BitConverter.ToInt32(temp, 0);
                 if (group_id == 0x010000ff) break;
 
                 string group_name = "";
@@ -121,13 +120,13 @@ namespace MMCS_MSE
                     group_name = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 4, group_desc.Length - 4), codePage);
                 }
 
-                //uint lists_cnt = (groups_lists.ContainsKey(group_id)) ? Convert.ToUInt32(groups_lists[group_id]) : 0;
-                //groups.Add(new MSGroup(group_id, group_name, lists_cnt));
+				int[] lists = (gl.ContainsKey((int)group_id)) ? gl[(int)group_id] : new int[0];
+				groups.Add(new MSGroup(group_id, group_name, lists));
             }
 			fs.Close();
         }
 
-		private void fill_lists_table(uint gid)
+		private void fill_lists_table(int gid)
 		{
 			lists.Clear();
 
@@ -139,16 +138,14 @@ namespace MMCS_MSE
 			}
 			FileStream fs = new FileStream(album_path, FileMode.Open, FileAccess.Read); ;
 			
-			byte[] temp = new byte[0];
-
-			uint[] lists_sizes = new uint[mserver.max_lists];
+			int[] lists_sizes = new int[mserver.max_lists];
 
 			fs.Position = mserver.lists_size_offset;
 			for (int i = 0; i < lists_sizes.Length; i++)
 			{
 				byte[] list_size = new byte[mserver.list_size_length];
 				fs.Read(list_size, 0, list_size.Length);
-				uint size = BitConverter.ToUInt32(list_size, 0);
+				int size = BitConverter.ToInt32(list_size, 0);
 				if (size == 0)
 				{
 					Array.Resize(ref lists_sizes, i);
@@ -157,52 +154,58 @@ namespace MMCS_MSE
 				lists_sizes[i] = size;
 			}
 
-			fs.Position = mserver.alists_offset;
-			for (int i = 0; i < lists_sizes.Length; i++)
+			//ПРОВЕРИТЬ ЛЮБИМЫЕ и 02!!!!
+			MSGroup group = groups.Where(gr => gr.Id == gid).First();
+			foreach (int lid in group.Lists)
 			{
+				byte[] temp = new byte[0];
 
+				int list_offset = 0;
+				for (int i = 0; i < lid - 1; i++)
+				{
+					list_offset += lists_sizes[i];
+				}
+				fs.Position = mserver.alists_offset + list_offset + mserver.a_unknown_length + mserver.listId_length + 1;
+				int songs_cnt = fs.ReadByte();
+
+				byte[] lname = new byte[mserver.listName_length];
+				fs.Position = mserver.alists_offset + list_offset + mserver.listName_offset;
+				fs.Read(lname, 0, lname.Length);
+				string list_name = "";
+				hf.spliceByteArray(lname, ref temp, 0, 4);
+				//←[tbl:NNN]
+				if (BitConverter.ToUInt32(temp, 0) == 0x62745b1b)
+				{
+					string tbl_id = hf.ByteArrayToString(hf.spliceByteArray(lname, ref temp, 6, 3));
+					list_name = mserver.get_TBLdata(Convert.ToUInt32(tbl_id));
+				}
+				else
+				{
+					list_name = hf.ByteArrayToString(lname, codePage);
+				}
+
+				Dictionary<int, int[]> songs = new Dictionary<int, int[]>();
+				byte[] song_data = new byte[mserver.asong_data_length];
+				fs.Position = mserver.alists_offset + list_offset + mserver.list_desc_length;
+				for (int i = 0; i < songs_cnt; i++)
+				{
+					fs.Read(song_data, 0, song_data.Length);
+					if (songs.ContainsKey(song_data[3]))
+					{
+						int[] lsongs = songs[song_data[3]];
+						Array.Resize(ref lsongs, lsongs.Length + 1);
+						lsongs[lsongs.Length - 1] = song_data[4];
+						songs[song_data[3]] = lsongs;
+					}
+					else
+					{
+						songs.Add(song_data[3], new int[] {song_data[4]});
+					}
+				}
+
+				lists.Add(new MSList(lid, list_name, songs));
 			}
-
-			//Hashtable groups_lists = new Hashtable();
-			//for (int i = 0; i < disks_count; i++)
-			//{
-			//	fs.Position = mserver.lists_offset + i * mserver.list_length + mserver.list_length - 1;
-			//	uint gid = (uint)fs.ReadByte();
-			//	if (groups_lists.ContainsKey(gid))
-			//	{
-			//		groups_lists[gid] = Convert.ToUInt32(groups_lists[gid]) + 1;
-			//	}
-			//	else
-			//	{
-			//		groups_lists.Add(gid, 1);
-			//	}
-			//}
-
-			//fs.Position = mserver.groups_offset;
-			//byte[] group_desc = new byte[mserver.group_length];
-			//for (int i = 1; i <= mserver.cnt_groups; i++)
-			//{
-			//	fs.Read(group_desc, 0, group_desc.Length);
-			//	hf.spliceByteArray(group_desc, ref temp, 0, 4);
-			//	uint group_id = BitConverter.ToUInt32(temp, 0);
-			//	if (group_id == 0x010000ff) break;
-
-			//	string group_name = "";
-			//	hf.spliceByteArray(group_desc, ref temp, 4, 4);
-			//	//←[tbl:NNN]
-			//	if (BitConverter.ToUInt32(temp, 0) == 0x62745b1b)
-			//	{
-			//		string tbl_id = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 10, 3));
-			//		group_name = mserver.get_TBLdata(Convert.ToUInt32(tbl_id));
-			//	}
-			//	else
-			//	{
-			//		group_name = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 4, group_desc.Length - 4), "iso-8859-5");
-			//	}
-
-			//	uint lists_cnt = (groups_lists.ContainsKey(group_id)) ? Convert.ToUInt32(groups_lists[group_id]) : 0;
-			//	groups.Add(new MSGroup(group_id, group_name, lists_cnt));
-			//}
+			
 			fs.Close();
 		}
 
