@@ -13,9 +13,9 @@ namespace MMCS_MSE
         private string main_dir;
 		private string INFO_path = "\\INFO";
 		private string ALBUM_path = "\\ALBUM";
-		private string DISCID_path, HIST_path, RECORD_path, TITLE_path;
+		private string TITLE_path = "\\TITLE";
 
-		private string DATA_path = "\\DATA";
+		//private string DATA_path = "\\DATA";
 		//private string CUSTOM_path = "\\CUSTOM";
 
 		//Settings
@@ -40,6 +40,21 @@ namespace MMCS_MSE
 		public int list_desc_length = 0x194;
 		public int listName_offset = 0x14;
 		public int asong_data_length = 16;
+		//ORG_ARRAY
+		public int discs_cnt_offset = 4;
+		public int discs_cnt_length = 4;
+		public int disc_desc_length = 0xe0;
+		public int discId_offset = 1;
+		public int discId_length = 4;
+		public int discName_offset = 12;
+		public int discName_length = 0x80;
+		public int discArtist_length = 0x40;
+		public int disc_songscnt_length = 4;
+		//TITLE
+		public int songs_cnt_offset = 0x1bc;
+		public int tdiscName_offset = 0x1d0;
+		public int tdiscName_length = 0xc0;
+		public int tdiscArtist_length = 0xc0;
 
 		public string MainDir
 		{
@@ -48,11 +63,6 @@ namespace MMCS_MSE
 
         public MMCSServer()
         {
-            DISCID_path = INFO_path + "\\DISCID";
-            HIST_path = INFO_path + "\\HIST";
-            RECORD_path = INFO_path + "\\RECORD";
-            TITLE_path = INFO_path + "\\TITLE";
-
             //INDEX
             lists_offset = groups_offset + cnt_groups * group_length;
 			//ALBUM
@@ -71,7 +81,19 @@ namespace MMCS_MSE
             return path;
         }
 
-        public string get_TBLdata(uint id)
+		public string get_ORGpath()
+		{
+			string path = main_dir + INFO_path + "\\ORG_ARRAY";
+			return path;
+		}
+
+		public string get_TITLEpath(string id)
+		{
+			string path = main_dir + INFO_path + TITLE_path + TITLE_path + id.ToString() +  "\\TITLE" + id + "00001.lst";
+			return path;
+		}
+
+		public string get_TBLdata(uint id)
         {
             string data = "";
             if (id == 171) return "Оригинальные компакт-диски";
@@ -198,6 +220,141 @@ namespace MMCS_MSE
 			{
 				this.songs_count += disk.Value.Length;
 			}
+		}
+
+		protected void OnPropertyChanged(string name)
+		{
+			if (PropertyChanged != null)
+			{
+				PropertyChanged(this, new PropertyChangedEventArgs(name));
+			}
+		}
+	}
+
+	class MSDisc : INotifyPropertyChanged
+	{
+		private byte id;
+		private string name;
+		private string artist;
+		private int songs_cnt;
+
+		public event PropertyChangedEventHandler PropertyChanged;
+
+		public byte byteId
+		{
+			get { return this.id; }
+			set
+			{
+				this.id = value;
+				OnPropertyChanged("Id");
+			}
+		}
+		public string Id
+		{
+			get { return BitConverter.ToString(new byte[1] { this.id }); }
+		}
+		public string Name
+		{
+			get { return this.name; }
+			set
+			{
+				//\x00 - end string
+				int null_offset = value.IndexOf('\x00');
+				this.name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				OnPropertyChanged("Name");
+			}
+		}
+		public string Artist
+		{
+			get { return this.artist; }
+			set
+			{
+				//\x00 - end string
+				int null_offset = value.IndexOf('\x00');
+				this.artist = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				OnPropertyChanged("Artist");
+			}
+		}
+		public int SongsCnt
+		{
+			get { return this.songs_cnt; }
+			set
+			{
+				this.songs_cnt = value;
+				OnPropertyChanged("SongsCnt");
+			}
+		}
+
+		public MSDisc(byte did, string dname, string dartist, int dsongs)
+		{
+			this.id = did;
+			//\x00 - end string
+			int null_offset = dname.IndexOf('\x00');
+			this.name = (null_offset != -1) ? dname.Substring(0, null_offset) : dname;
+			//\x00 - end string
+			null_offset = dartist.IndexOf('\x00');
+			this.artist = (null_offset != -1) ? dartist.Substring(0, null_offset) : dartist;
+			this.songs_cnt = dsongs;
+		}
+
+		protected void OnPropertyChanged(string name)
+		{
+			if (PropertyChanged != null)
+			{
+				PropertyChanged(this, new PropertyChangedEventArgs(name));
+			}
+		}
+	}
+
+	class MSTrack : INotifyPropertyChanged
+	{
+		private int id;
+		private string name;
+		private string artist;
+
+		public event PropertyChangedEventHandler PropertyChanged;
+
+		public int Id
+		{
+			get { return this.id; }
+			set
+			{
+				this.id = value;
+				OnPropertyChanged("Id");
+			}
+		}
+		public string Name
+		{
+			get { return this.name; }
+			set
+			{
+				//\x00 - end string
+				int null_offset = value.IndexOf('\x00');
+				this.name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				OnPropertyChanged("Name");
+			}
+		}
+		public string Artist
+		{
+			get { return this.artist; }
+			set
+			{
+				//\x00 - end string
+				int null_offset = value.IndexOf('\x00');
+				this.artist = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				OnPropertyChanged("Artist");
+			}
+		}
+
+		public MSTrack(int tid, string tname, string tartist)
+		{
+			this.id = tid;
+			//\x00 - end string
+			int null_offset = tname.IndexOf('\x00');
+			this.name = (null_offset != -1) ? tname.Substring(0, null_offset) : tname;
+			//\x00 - end string
+			null_offset = tartist.IndexOf('\x00');
+			this.artist = (null_offset != -1) ? tartist.Substring(0, null_offset) : tartist;
 		}
 
 		protected void OnPropertyChanged(string name)

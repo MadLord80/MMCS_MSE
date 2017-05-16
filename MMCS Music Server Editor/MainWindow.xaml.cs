@@ -32,16 +32,31 @@ namespace MMCS_MSE
         private MMCSServer mserver = new MMCSServer();
         private ObservableCollection<MSGroup> groups = new ObservableCollection<MSGroup>();
 		private ObservableCollection<MSList> lists = new ObservableCollection<MSList>();
+		private ObservableCollection<MSDisc> discs = new ObservableCollection<MSDisc>();
+		private ObservableCollection<MSTrack> tracks = new ObservableCollection<MSTrack>();
 
 		public MainWindow()
         {
             InitializeComponent();
             GroupsListView.ItemsSource = groups;
-			ListsListView.ItemsSource = lists;
+			TrackslistView.ItemsSource = tracks;
 
 			radioButton1.IsChecked = true;
 
 			radioButton_Copy2.IsChecked = true;
+
+			editButtonTemplate.Click += new RoutedEventHandler(on_editList);
+			delButtonTemplate.Click += new RoutedEventHandler(on_delList);
+			addButtonTemplate.Click += new RoutedEventHandler(on_addList);
+			copyButtonTemplate.Click += new RoutedEventHandler(on_copyList);
+		}
+
+		private void triggerButtons(bool onoff)
+		{
+			editButtonTemplate.IsEnabled = onoff;
+			delButtonTemplate.IsEnabled = onoff;
+			addButtonTemplate.IsEnabled = onoff;
+			copyButtonTemplate.IsEnabled = onoff;
 		}
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
@@ -66,7 +81,13 @@ namespace MMCS_MSE
 
         private void fill_groups_table(string path)
         {
-			lists.Clear(); groups.Clear();
+			lists.Clear(); groups.Clear(); discs.Clear(); tracks.Clear();
+			artistTitlelabel.Content = "";
+			tableLableTemplate.Content = "";
+			listViewTemplate.View = null;
+			listViewTemplate.ItemsSource = null;
+			triggerButtons(false);
+
 			FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read);
             byte[] temp = new byte[0];
 
@@ -129,6 +150,15 @@ namespace MMCS_MSE
 		private void fill_lists_table(int gid)
 		{
 			lists.Clear();
+			tableLableTemplate.Content = "Lists (max 100)";
+			GridView lview = new GridView();
+			listViewTemplate.View = lview;
+			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 40, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 240, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
+			listViewTemplate.ItemsSource = lists;
+			triggerButtons(true);
+			copyButtonTemplate.ToolTip = "Copy Name to clipboard";
 
 			string album_path = mserver.get_ALBUMpath();
 			if (!File.Exists(album_path))
@@ -136,7 +166,7 @@ namespace MMCS_MSE
 				System.Windows.MessageBox.Show(album_path + " not found!");
 				return;
 			}
-			FileStream fs = new FileStream(album_path, FileMode.Open, FileAccess.Read); ;
+			FileStream fs = new FileStream(album_path, FileMode.Open, FileAccess.Read);
 			
 			int[] lists_sizes = new int[mserver.max_lists];
 
@@ -208,28 +238,177 @@ namespace MMCS_MSE
 			
 			fs.Close();
 		}
+		
+		private void fill_disks_table()
+		{
+			discs.Clear();
+			tableLableTemplate.Content = "Discs";
+			GridView lview = new GridView();
+			listViewTemplate.View = lview;
+			lview.Columns.Add(new GridViewColumn() { Header = "hexId", Width = 40, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
+			listViewTemplate.ItemsSource = discs;
+			triggerButtons(true);
+			copyButtonTemplate.ToolTip = "Copy Name-Artist to clipboard";
+
+			string org_path = mserver.get_ORGpath();
+			if (!File.Exists(org_path))
+			{
+				System.Windows.MessageBox.Show(org_path + " not found!");
+				return;
+			}
+			FileStream fs = new FileStream(org_path, FileMode.Open, FileAccess.Read);
+
+			byte[] temp = new byte[0];
+
+			byte[] discs_cnt = new byte[mserver.discs_cnt_length];
+			fs.Position = mserver.discs_cnt_offset;
+			fs.Read(discs_cnt, 0, discs_cnt.Length);
+			int discs_count = BitConverter.ToInt32(discs_cnt, 0);
+
+			byte[] disc_desc = new byte[mserver.disc_desc_length];
+			for (int i = 0; i < discs_count; i++)
+			{
+				fs.Read(disc_desc, 0, disc_desc.Length);
+				hf.spliceByteArray(disc_desc, ref temp, mserver.discId_offset + 3, 1);
+				byte disc_id = temp[0];
+				hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset, mserver.discName_length);
+				string disc_name = hf.ByteArrayToString(temp, codePage);
+				//Artist может не быть в ORG_ARRAY, но быть в TITLEXX000001.lst!
+				hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset + mserver.discName_length, mserver.discArtist_length);
+				string disc_artist = hf.ByteArrayToString(temp, codePage);
+				hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset + mserver.discName_length + mserver.discArtist_length, mserver.disc_songscnt_length);
+				int songs = BitConverter.ToInt32(temp, 0);
+
+				discs.Add(new MSDisc(disc_id, disc_name, disc_artist, songs));
+			}
+		}
+
+		private void fill_tracks_table()
+		{
+			tracks.Clear();
+			artistTitlelabel.Content = "";
+
+			Type itemType = listViewTemplate.SelectedItem.GetType();
+
+			if (itemType.Name == "MSDisc")
+			{
+				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
+				int disc_id = disc.byteId;
+				fill_tracks(disc_id, new int[0]);
+			}
+			else
+			{
+				MSList list = (listViewTemplate.SelectedItem as MSList);
+				foreach (KeyValuePair<int, int[]> disc in list.Songs)
+				{
+					fill_tracks(disc.Key, disc.Value);
+				}
+			}
+			
+		}
+
+		private void fill_tracks(int disc_id, int[] tracks_arr)
+		{
+			string did = BitConverter.ToString(new byte[1] { (byte)disc_id });
+			string title_path = mserver.get_TITLEpath(did);
+			if (!File.Exists(title_path))
+			{
+				System.Windows.MessageBox.Show(title_path + " not found!");
+				return;
+			}
+			FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.Read);
+
+			byte[] temp = new byte[0];
+
+			fs.Position = mserver.songs_cnt_offset;
+			int songs_count = fs.ReadByte();
+
+			byte[] track_data = new byte[mserver.tdiscName_length + mserver.tdiscArtist_length];
+			fs.Position = mserver.tdiscName_offset;
+			fs.Read(track_data, 0, track_data.Length);
+			hf.spliceByteArray(track_data, ref temp, mserver.tdiscName_length, mserver.tdiscArtist_length);
+			string disc_name = hf.ByteArrayToString(temp, codePage);
+			//\x00 - end string
+			int null_offset = disc_name.IndexOf('\x00');
+			disc_name = (null_offset != -1) ? disc_name.Substring(0, null_offset) : disc_name;
+			if (disc_name != "") artistTitlelabel.Content = ": " + disc_name;
+
+			ObservableCollection<MSTrack> alltracks = new ObservableCollection<MSTrack>();
+			for (int i = 0; i < songs_count; i++)
+			{
+				fs.Read(track_data, 0, track_data.Length);
+				hf.spliceByteArray(track_data, ref temp, 0, mserver.tdiscName_length);
+				string tname = hf.ByteArrayToString(temp, codePage);
+				hf.spliceByteArray(track_data, ref temp, mserver.tdiscName_length, mserver.tdiscArtist_length);
+				string tart = hf.ByteArrayToString(temp, codePage);
+				alltracks.Add(new MSTrack(i + 1, tname, tart));
+			}
+			if (tracks_arr.Length > 0)
+			{
+				for (int i = 0; i < tracks_arr.Length; i++)
+				{
+					IEnumerable<MSTrack> track = alltracks.Where(t => t.Id == tracks_arr[i]);
+					if (track.Count() > 0) tracks.Add(track.First());
+				}
+			}
+			else
+			{
+				tracks = alltracks;
+			}
+			TrackslistView.ItemsSource = tracks;
+
+			fs.Close();
+		}
+
+		private void on_editList(object sender, RoutedEventArgs args)
+		{
+
+		}
+
+		private void on_delList(object sender, RoutedEventArgs args)
+		{
+
+		}
+
+		private void on_addList(object sender, RoutedEventArgs args)
+		{
+
+		}
+
+		private void on_copyList(object sender, RoutedEventArgs args)
+		{
+			if (listViewTemplate.SelectedItem == null) return;
+			Type itemType = listViewTemplate.SelectedItem.GetType();
+			if (itemType.Name == "MSList")
+			{
+				MSList list = (listViewTemplate.SelectedItem as MSList);
+				System.Windows.Clipboard.SetText(list.Name);
+			}
+			else
+			{
+				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
+				string na = (disc.Artist == "") ? disc.Name : disc.Name + " - " + disc.Artist;
+				System.Windows.Clipboard.SetText(na);
+			}
+		}
 
 		private void GroupsListView_onclick(object sender, MouseButtonEventArgs e)
         {
-            var listView = e.Source as System.Windows.Controls.ListView;
-            if (listView != null)
-            {
-                if (listView.SelectedItem != null)
-                {
-                    MSGroup group = (listView.SelectedItem as MSGroup);
-					if (group.Id == 0)
-					{
-						//disks - ORG_ARRAY
-						//fill_disks_table();
-					}
-					else
-					{
-						//lists - ALBUM
-						fill_lists_table(group.Id);
-					}
-					//System.Windows.MessageBox.Show(group.Name);                    
-				}
-            }
+			if (GroupsListView.SelectedItem == null) return;
+			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+			if (group.Id == 0)
+			{
+				//disks - ORG_ARRAY
+				fill_disks_table();
+			}
+			else
+			{
+				//lists - ALBUM
+				fill_lists_table(group.Id);
+			}              
         }
 
 		private void radioButton_Checked(object sender, RoutedEventArgs e)
@@ -290,6 +469,19 @@ namespace MMCS_MSE
 		{
 			System.Windows.Controls.RadioButton li = (sender as System.Windows.Controls.RadioButton);
 			codePage = li.Content.ToString();
+		}
+
+		private void button_Click(object sender, RoutedEventArgs e)
+		{
+			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+			System.Windows.Clipboard.SetText(group.Name);
+		}
+				
+		private void listViewTemplate_onclick(object sender, MouseButtonEventArgs e)
+		{
+			if (listViewTemplate.SelectedItem == null) return;
+			
+			fill_tracks_table();
 		}
 	}
 }
