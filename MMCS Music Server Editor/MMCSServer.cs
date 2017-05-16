@@ -308,12 +308,34 @@ namespace MMCS_MSE
 
 	class MSTrack : INotifyPropertyChanged
 	{
+		private int disc_id;
+		private string disc_name;
 		private int id;
 		private string name;
 		private string artist;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
+		public int DiskId
+		{
+			get { return this.disc_id; }
+			set
+			{
+				this.disc_id = value;
+				OnPropertyChanged("DiskId");
+			}
+		}
+		public string DiscName
+		{
+			get { return this.disc_name; }
+			set
+			{
+				//\x00 - end string
+				int null_offset = value.IndexOf('\x00');
+				this.disc_name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				OnPropertyChanged("DiscName");
+			}
+		}
 		public int Id
 		{
 			get { return this.id; }
@@ -322,6 +344,10 @@ namespace MMCS_MSE
 				this.id = value;
 				OnPropertyChanged("Id");
 			}
+		}
+		public string File
+		{
+			get { return String.Format("{0,3:000}.sc", this.id); }
 		}
 		public string Name
 		{
@@ -346,11 +372,15 @@ namespace MMCS_MSE
 			}
 		}
 
-		public MSTrack(int tid, string tname, string tartist)
+		public MSTrack(int tdid, string tdname, int tid, string tname, string tartist)
 		{
+			this.disc_id = tdid;
 			this.id = tid;
 			//\x00 - end string
-			int null_offset = tname.IndexOf('\x00');
+			int null_offset = tdname.IndexOf('\x00');
+			this.disc_name = (null_offset != -1) ? tdname.Substring(0, null_offset) : tdname;
+			//\x00 - end string
+			null_offset = tname.IndexOf('\x00');
 			this.name = (null_offset != -1) ? tname.Substring(0, null_offset) : tname;
 			//\x00 - end string
 			null_offset = tartist.IndexOf('\x00');
