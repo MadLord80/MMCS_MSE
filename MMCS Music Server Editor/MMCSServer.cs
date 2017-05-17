@@ -51,6 +51,8 @@ namespace MMCS_MSE
 		public int discArtist_length = 0x40;
 		public int disc_songscnt_length = 4;
 		//TITLE
+		public int dtrack_size_offset = 0x24;
+		public int dtrack_size_length = 4;
 		public int songs_cnt_offset = 0x1bc;
 		public int tdiscName_offset = 0x1d0;
 		public int tdiscName_length = 0xc0;
@@ -87,9 +89,10 @@ namespace MMCS_MSE
 			return path;
 		}
 
-		public string get_TITLEpath(string id)
+		public string get_TITLEpath(ElenmentId disc)
 		{
-			string path = main_dir + INFO_path + TITLE_path + TITLE_path + id.ToString() +  "\\TITLE" + id + "00001.lst";
+			string id = BitConverter.ToString(new byte[1] { (byte)disc.Id });
+			string path = main_dir + INFO_path + TITLE_path + TITLE_path + id +  "\\TITLE" + id + "00001.lst";
 			return path;
 		}
 
@@ -108,7 +111,7 @@ namespace MMCS_MSE
     {
         private int id;
         private string name;
-		private int[] lists;
+		private ElenmentId[] lists;
         
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -132,7 +135,7 @@ namespace MMCS_MSE
                 OnPropertyChanged("Name");
             }
         }
-        public int[] Lists
+        public ElenmentId[] Lists
         {
             get { return this.lists; }
             set
@@ -142,7 +145,7 @@ namespace MMCS_MSE
             }
         }
 
-        public MSGroup(int gid, string gname, int[] glists)
+        public MSGroup(int gid, string gname, ElenmentId[] glists)
         {
             this.id = gid;
             //\x00 - end string
@@ -164,7 +167,7 @@ namespace MMCS_MSE
 	{
 		private int id;
 		private string name;
-		private Dictionary<int, int[]> songs = new Dictionary<int, int[]>();
+		private Dictionary<ElenmentId, int[]> songs = new Dictionary<ElenmentId, int[]>();
 		private int songs_count;
 
 		public event PropertyChangedEventHandler PropertyChanged;
@@ -189,7 +192,7 @@ namespace MMCS_MSE
 				OnPropertyChanged("Name");
 			}
 		}
-		public Dictionary<int, int[]> Songs
+		public Dictionary<ElenmentId, int[]> Songs
 		{
 			get { return this.songs; }
 			set
@@ -208,7 +211,7 @@ namespace MMCS_MSE
 			}
 		}
 
-		public MSList(int lid, string lname, Dictionary<int, int[]> lsongs)
+		public MSList(int lid, string lname, Dictionary<ElenmentId, int[]> lsongs)
 		{
 			this.id = lid;
 			//\x00 - end string
@@ -216,7 +219,7 @@ namespace MMCS_MSE
 			this.name = (null_offset != -1) ? lname.Substring(0, null_offset) : lname;
 			this.songs = lsongs;
 			this.songs_count = 0;
-			foreach (KeyValuePair<int, int[]> disk in lsongs)
+			foreach (KeyValuePair<ElenmentId, int[]> disk in lsongs)
 			{
 				this.songs_count += disk.Value.Length;
 			}
@@ -233,14 +236,14 @@ namespace MMCS_MSE
 
 	class MSDisc : INotifyPropertyChanged
 	{
-		private byte id;
+		private ElenmentId id;
 		private string name;
 		private string artist;
 		private int songs_cnt;
 
 		public event PropertyChangedEventHandler PropertyChanged;
-
-		public byte byteId
+		
+		public ElenmentId Id
 		{
 			get { return this.id; }
 			set
@@ -248,10 +251,6 @@ namespace MMCS_MSE
 				this.id = value;
 				OnPropertyChanged("Id");
 			}
-		}
-		public string Id
-		{
-			get { return BitConverter.ToString(new byte[1] { this.id }); }
 		}
 		public string Name
 		{
@@ -285,7 +284,7 @@ namespace MMCS_MSE
 			}
 		}
 
-		public MSDisc(byte did, string dname, string dartist, int dsongs)
+		public MSDisc(ElenmentId did, string dname, string dartist, int dsongs)
 		{
 			this.id = did;
 			//\x00 - end string
@@ -308,7 +307,7 @@ namespace MMCS_MSE
 
 	class MSTrack : INotifyPropertyChanged
 	{
-		private int disc_id;
+		private ElenmentId disc_id;
 		private string disc_name;
 		private int id;
 		private string name;
@@ -316,7 +315,7 @@ namespace MMCS_MSE
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public int DiskId
+		public ElenmentId DiskId
 		{
 			get { return this.disc_id; }
 			set
@@ -372,7 +371,7 @@ namespace MMCS_MSE
 			}
 		}
 
-		public MSTrack(int tdid, string tdname, int tid, string tname, string tartist)
+		public MSTrack(ElenmentId tdid, string tdname, int tid, string tname, string tartist)
 		{
 			this.disc_id = tdid;
 			this.id = tid;
@@ -393,6 +392,35 @@ namespace MMCS_MSE
 			{
 				PropertyChanged(this, new PropertyChangedEventArgs(name));
 			}
+		}
+	}
+
+	class ElenmentId
+	{
+		private int id;
+		private int prefix;
+
+		public int Id
+		{
+			get { return this.id; }
+			set { this.id = value; }
+		}
+		public int Prefix
+		{
+			get { return this.prefix; }
+			set { this.prefix = value; }
+		}
+		public string FullId
+		{
+			get {
+				return BitConverter.ToString(new byte[1] { (byte)this.id }) + "0000" + String.Format("{0,2:00}", this.prefix);
+			}
+		}
+
+		public ElenmentId(int eid, int epr)
+		{
+			this.id = eid;
+			this.prefix = epr;
 		}
 	}
 }
