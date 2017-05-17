@@ -51,12 +51,17 @@ namespace MMCS_MSE
 		public int discArtist_length = 0x40;
 		public int disc_songscnt_length = 4;
 		//TITLE
+		public int max_dtracks = 100;
 		public int dtrack_size_offset = 0x24;
 		public int dtrack_size_length = 4;
-		public int songs_cnt_offset = 0x1bc;
-		public int tdiscName_offset = 0x1d0;
-		public int tdiscName_length = 0xc0;
-		public int tdiscArtist_length = 0xc0;
+		public int dtracks_offset;
+		public int dtId_offset = 4;
+		public int songs_cnt_offset = 8;
+		public int dtName_offset = 0x1c;
+		public int dtName_length = 0x80;
+		public int dtNameLoc_length = 0x40;
+		public int dtArtist_length = 0x80;
+		public int dtArtistLoc_length = 0x40;
 
 		public string MainDir
 		{
@@ -69,6 +74,8 @@ namespace MMCS_MSE
             lists_offset = groups_offset + cnt_groups * group_length;
 			//ALBUM
 			alists_offset = lists_size_offset + max_lists * list_size_length;
+			//TITLE
+			dtracks_offset = dtrack_size_offset + max_dtracks * dtrack_size_length;
 		}
 
 		public string get_ALBUMpath()
@@ -308,7 +315,10 @@ namespace MMCS_MSE
 	class MSTrack : INotifyPropertyChanged
 	{
 		private ElenmentId disc_id;
-		private string disc_name;
+		//private string disc_name;
+		//private string disc_name_loc;
+		private string disc_artist;
+		//private string disc_artist_loc;
 		private int id;
 		private string name;
 		private string artist;
@@ -324,14 +334,14 @@ namespace MMCS_MSE
 				OnPropertyChanged("DiskId");
 			}
 		}
-		public string DiscName
+		public string DiscArtist
 		{
-			get { return this.disc_name; }
+			get { return this.disc_artist; }
 			set
 			{
 				//\x00 - end string
 				int null_offset = value.IndexOf('\x00');
-				this.disc_name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				this.disc_artist = (null_offset != -1) ? value.Substring(0, null_offset) : value;
 				OnPropertyChanged("DiscName");
 			}
 		}
@@ -377,7 +387,7 @@ namespace MMCS_MSE
 			this.id = tid;
 			//\x00 - end string
 			int null_offset = tdname.IndexOf('\x00');
-			this.disc_name = (null_offset != -1) ? tdname.Substring(0, null_offset) : tdname;
+			this.disc_artist = (null_offset != -1) ? tdname.Substring(0, null_offset) : tdname;
 			//\x00 - end string
 			null_offset = tname.IndexOf('\x00');
 			this.name = (null_offset != -1) ? tname.Substring(0, null_offset) : tname;

@@ -267,8 +267,20 @@ namespace MMCS_MSE
 
 		private void fill_tracks_array()
 		{
+			//1 TITLE - N discs
+			int[] readed_titles = new int[0];
 			foreach (MSDisc disc in discs)
 			{
+				if (Array.IndexOf(readed_titles, disc.Id.Id) != -1)
+				{
+					continue;
+				}
+				else
+				{
+					Array.Resize(ref readed_titles, readed_titles.Length + 1);
+					readed_titles[readed_titles.Length - 1] = disc.Id.Id;
+				}
+
 				string title_path = mserver.get_TITLEpath(disc.Id);
 				if (!File.Exists(title_path))
 				{
@@ -279,32 +291,49 @@ namespace MMCS_MSE
 
 				byte[] temp = new byte[0];
 
-				fs.Position = mserver.songs_cnt_offset;
-				int songs_count = fs.ReadByte();
+				int[] dtracks_sizes = new int[mserver.max_dtracks];
 
-				byte[] track_data = new byte[mserver.tdiscName_length + mserver.tdiscArtist_length];
-				fs.Position = mserver.tdiscName_offset;
-				fs.Read(track_data, 0, track_data.Length);
-				hf.spliceByteArray(track_data, ref temp, mserver.tdiscName_length, mserver.tdiscArtist_length);
-				string disc_name = hf.ByteArrayToString(temp, codePage);
-
-				for (int i = 0; i < songs_count; i++)
+				fs.Position = mserver.dtrack_size_offset;
+				for (int i = 0; i < dtracks_sizes.Length; i++)
 				{
-					fs.Read(track_data, 0, track_data.Length);
-					hf.spliceByteArray(track_data, ref temp, 0, mserver.tdiscName_length);
-					string tname = hf.ByteArrayToString(temp, codePage);
-					hf.spliceByteArray(track_data, ref temp, mserver.tdiscName_length, mserver.tdiscArtist_length);
-					string tart = hf.ByteArrayToString(temp, codePage);
-					tracks.Add(new MSTrack(disc.Id, disc_name, i + 1, tname, tart));
+					byte[] dtrack_size = new byte[mserver.dtrack_size_length];
+					fs.Read(dtrack_size, 0, dtrack_size.Length);
+					int size = BitConverter.ToInt32(dtrack_size, 0);
+					if (size == 0)
+					{
+						Array.Resize(ref dtracks_sizes, i);
+						break;
+					}
+					dtracks_sizes[i] = size;
+				}
+
+				fs.Position = mserver.dtracks_offset;
+				foreach (int dsize in dtracks_sizes)
+				{
+					byte[] dtracks_data = new byte[dsize];
+					fs.Read(dtracks_data, 0, dtracks_data.Length);
+
+					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtId_offset, 4);
+					ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
+
+					int songs_count = dtracks_data[mserver.songs_cnt_offset];
+
+					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length, mserver.dtArtist_length);
+					string disc_name = hf.ByteArrayToString(temp, codePage);
+
+					for (int i = 0; i < songs_count; i++)
+					{
+						int cur_offset = i * (mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length);
+						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + cur_offset, mserver.dtName_length);
+						string tname = hf.ByteArrayToString(temp, codePage);
+						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length, mserver.dtArtist_length);
+						string tart = hf.ByteArrayToString(temp, codePage);
+						tracks.Add(new MSTrack(disc_id, disc_name, i + 1, tname, tart));
+					}
 				}
 
 				fs.Close();
 			}
-
-			//foreach (MSTrack tr in tracks)
-			//{
-			//	Console.Write(tr.DiskId.FullId + ": " + tr.Id + "\n");
-			//}
 		}
 
 		private void fill_lists_table(int gid)
@@ -402,7 +431,7 @@ namespace MMCS_MSE
 				{
 					foreach (MSTrack track in tracks.Where(t => t.DiskId.Id == dlist.Key.Id && t.DiskId.Prefix == dlist.Key.Prefix))
 					{
-						if (track.DiscName != "") artistTitlelabel.Content = ": " + track.DiscName;
+						if (track.DiscArtist != "") artistTitlelabel.Content = ": " + track.DiscArtist;
 						ttracks.Add(track);
 					}
 				}
