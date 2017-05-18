@@ -331,7 +331,6 @@ namespace MMCS_MSE
 					int songs_count = dtracks_data[mserver.songs_cnt_offset];
 
 					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
-					//string disc_artist = hf.ByteArrayToString(temp, codePage);
 					byte[] disc_artist = new byte[temp.Length];
 					temp.CopyTo(disc_artist, 0);
 
@@ -340,11 +339,9 @@ namespace MMCS_MSE
 					{
 						int cur_offset = i * (mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length);
 						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset, mserver.dtName_length);
-						//string tname = hf.ByteArrayToString(temp, codePage);
 						byte[] tname = new byte[temp.Length];
 						temp.CopyTo(tname, 0);
 						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
-						//string tart = hf.ByteArrayToString(temp, codePage);
 						byte[] tart = new byte[temp.Length];
 						temp.CopyTo(tart, 0);
 						tracks.Add(new MSTrack(disc_id, disc_artist, i + 1, tname, tart));
@@ -367,7 +364,7 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 280, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
-			triggerButtons(true);
+			//triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name to clipboard";
 
 			ObservableCollection<MSList> tlists = new ObservableCollection<MSList>();
@@ -397,7 +394,7 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
 			listViewTemplate.ItemsSource = discs;
-			triggerButtons(true);
+			//triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name-Artist to clipboard";
 		}
 
@@ -555,12 +552,29 @@ namespace MMCS_MSE
 			initServer(dir);
 		}
 		
-		private void button_Click(object sender, RoutedEventArgs e)
+		private void copyGroupButton_Click(object sender, RoutedEventArgs e)
 		{
+			if (GroupsListView.SelectedItem == null) return;
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			System.Windows.Clipboard.SetText(group.Name);
 		}
-				
+
+		private void editGroupButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (GroupsListView.SelectedItem == null) return;
+			//MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+			//GridView gv = (GroupsListView.View as GridView);
+			//DataTemplate dt = new DataTemplate { DataType = typeof(MSGroup)};
+			//FrameworkElementFactory sp = new FrameworkElementFactory(typeof(StackPanel));
+			//sp.SetValue(StackPanel.OrientationProperty, System.Windows.Controls.Orientation.Horizontal);
+			//FrameworkElementFactory tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+			//tb.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Name"));
+			//sp.AppendChild(tb);
+			//dt.VisualTree = sp;
+			//gv.Columns[1].CellTemplate = dt;
+			//GroupsListView.View = gv;
+		}
+
 		private void listViewTemplate_onclick(object sender, MouseButtonEventArgs e)
 		{
 			if (listViewTemplate.SelectedItem == null) return;
@@ -603,6 +617,7 @@ namespace MMCS_MSE
 				}
 			}
 		}
+
 	}
 
 	public class DiscStyleSelector : StyleSelector

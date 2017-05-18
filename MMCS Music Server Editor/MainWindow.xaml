@@ -40,7 +40,7 @@
         <RadioButton x:Name="radioButton_Copy7" Content="N-04rus newcd only" HorizontalAlignment="Left" Margin="564,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
         <RadioButton x:Name="radioButton_Copy8" Content="N-04rus newcd delother" HorizontalAlignment="Left" Margin="708,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
         <RadioButton x:Name="radioButton_Copy9" Content="R-03 empty" HorizontalAlignment="Left" Margin="186,537,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <Button x:Name="editGroupButton" HorizontalAlignment="Left" Margin="263,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
+        <Button x:Name="editGroupButton" HorizontalAlignment="Left" Margin="263,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" Click="editGroupButton_Click">
             <StackPanel>
                 <Image Source="Images/edit.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
@@ -55,7 +55,7 @@
                 <Image Source="Images/add.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="button" HorizontalAlignment="Left" Margin="365,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Copy Name to clipboard" Click="button_Click">
+        <Button x:Name="copyGroupButton" HorizontalAlignment="Left" Margin="365,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Copy Name to clipboard" Click="copyGroupButton_Click">
             <StackPanel>
                 <Image Source="Images/copy.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
