@@ -117,7 +117,9 @@ namespace MMCS_MSE
     class MSGroup : INotifyPropertyChanged
     {
         private int id;
-        private string name;
+        private string name = "";
+		private byte[] name_bytes = new byte[0];
+		private string codePage = "iso-8859-5";
 		private ElenmentId[] lists;
         
         public event PropertyChangedEventHandler PropertyChanged;
@@ -133,16 +135,25 @@ namespace MMCS_MSE
         }
         public string Name
         {
-            get { return this.name; }
-            set
-            {
-                //\x00 - end string
-                int null_offset = value.IndexOf('\x00');
-                this.name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
-                OnPropertyChanged("Name");
-            }
-        }
-        public ElenmentId[] Lists
+			get
+			{
+				if (this.name_bytes.Length == 0) return this.name;
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
+				//\x00 - end string
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+			}
+		}
+		public string CodePage
+		{
+			get { return this.codePage; }
+			set
+			{
+				this.codePage = value;
+				OnPropertyChanged("Name");
+			}
+		}
+		public ElenmentId[] Lists
         {
             get { return this.lists; }
             set
@@ -152,7 +163,14 @@ namespace MMCS_MSE
             }
         }
 
-        public MSGroup(int gid, string gname, ElenmentId[] glists)
+		public MSGroup(int gid, byte[] gnbytes, ElenmentId[] glists)
+		{
+			this.id = gid;
+			this.name_bytes = gnbytes;
+			this.lists = glists;
+		}
+
+		public MSGroup(int gid, string gname, ElenmentId[] glists)
         {
             this.id = gid;
             //\x00 - end string
@@ -173,7 +191,9 @@ namespace MMCS_MSE
 	class MSList : INotifyPropertyChanged
 	{
 		private int id;
-		private string name;
+		private string name = "";
+		private byte[] name_bytes = new byte[0];
+		private string codePage = "iso-8859-5";
 		private Dictionary<ElenmentId, int[]> songs = new Dictionary<ElenmentId, int[]>();
 		private int songs_count;
 
@@ -188,15 +208,24 @@ namespace MMCS_MSE
 				OnPropertyChanged("Id");
 			}
 		}
-		public string Name
+		public string CodePage
 		{
-			get { return this.name; }
+			get { return this.codePage; }
 			set
 			{
-				//\x00 - end string
-				int null_offset = value.IndexOf('\x00');
-				this.name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				this.codePage = value;
 				OnPropertyChanged("Name");
+			}
+		}
+		public string Name
+		{
+			get
+			{
+				if (this.name_bytes.Length == 0) return this.name;
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
+				//\x00 - end string
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
 		}
 		public Dictionary<ElenmentId, int[]> Songs
@@ -232,6 +261,18 @@ namespace MMCS_MSE
 			}
 		}
 
+		public MSList(int lid, byte[] lname, Dictionary<ElenmentId, int[]> lsongs)
+		{
+			this.id = lid;
+			this.name_bytes = lname;
+			this.songs = lsongs;
+			this.songs_count = 0;
+			foreach (KeyValuePair<ElenmentId, int[]> disk in lsongs)
+			{
+				this.songs_count += disk.Value.Length;
+			}
+		}
+
 		protected void OnPropertyChanged(string name)
 		{
 			if (PropertyChanged != null)
@@ -245,8 +286,12 @@ namespace MMCS_MSE
 	{
 		private ElenmentId id;
 		private string name;
+		private byte[] name_bytes = new byte[0];
 		private string artist;
+		private byte[] artist_bytes = new byte[0];
+		private string codePage = "iso-8859-5";
 		private int songs_cnt;
+		private string errors;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 		
@@ -259,26 +304,34 @@ namespace MMCS_MSE
 				OnPropertyChanged("Id");
 			}
 		}
-		public string Name
+		public string CodePage
 		{
-			get { return this.name; }
+			get { return this.codePage; }
 			set
 			{
-				//\x00 - end string
-				int null_offset = value.IndexOf('\x00');
-				this.name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
+				this.codePage = value;
 				OnPropertyChanged("Name");
+				OnPropertyChanged("Artist");
+			}
+		}
+		public string Name
+		{
+			get
+			{
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
+				//\x00 - end string
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
 		}
 		public string Artist
 		{
-			get { return this.artist; }
-			set
+			get
 			{
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.artist_bytes));
 				//\x00 - end string
-				int null_offset = value.IndexOf('\x00');
-				this.artist = (null_offset != -1) ? value.Substring(0, null_offset) : value;
-				OnPropertyChanged("Artist");
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
 		}
 		public int SongsCnt
@@ -290,17 +343,24 @@ namespace MMCS_MSE
 				OnPropertyChanged("SongsCnt");
 			}
 		}
+		public string Errors
+		{
+			get { return this.errors; }
+			set
+			{
+				this.errors = value;
+				OnPropertyChanged("Errors");
+			}
+		}
 
-		public MSDisc(ElenmentId did, string dname, string dartist, int dsongs)
+		public MSDisc(ElenmentId did, byte[] dname, byte[] dartist, int dsongs)
 		{
 			this.id = did;
-			//\x00 - end string
-			int null_offset = dname.IndexOf('\x00');
-			this.name = (null_offset != -1) ? dname.Substring(0, null_offset) : dname;
-			//\x00 - end string
-			null_offset = dartist.IndexOf('\x00');
-			this.artist = (null_offset != -1) ? dartist.Substring(0, null_offset) : dartist;
+			this.name_bytes = dname;
+			this.artist_bytes = dartist;
 			this.songs_cnt = dsongs;
+
+			this.errors = "";
 		}
 
 		protected void OnPropertyChanged(string name)
@@ -318,10 +378,14 @@ namespace MMCS_MSE
 		//private string disc_name;
 		//private string disc_name_loc;
 		private string disc_artist;
+		private byte[] disc_artist_bytes = new byte[0];
+		private string codePage = "iso-8859-5";
 		//private string disc_artist_loc;
 		private int id;
 		private string name;
+		private byte[] name_bytes = new byte[0];
 		private string artist;
+		private byte[] artist_bytes = new byte[0];
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -334,15 +398,25 @@ namespace MMCS_MSE
 				OnPropertyChanged("DiskId");
 			}
 		}
-		public string DiscArtist
+		public string CodePage
 		{
-			get { return this.disc_artist; }
+			get { return this.codePage; }
 			set
 			{
+				this.codePage = value;
+				OnPropertyChanged("DiscArtist");
+				OnPropertyChanged("Name");
+				OnPropertyChanged("Artist");
+			}
+		}
+		public string DiscArtist
+		{
+			get
+			{
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.disc_artist_bytes));
 				//\x00 - end string
-				int null_offset = value.IndexOf('\x00');
-				this.disc_artist = (null_offset != -1) ? value.Substring(0, null_offset) : value;
-				OnPropertyChanged("DiscName");
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
 		}
 		public int Id
@@ -360,40 +434,32 @@ namespace MMCS_MSE
 		}
 		public string Name
 		{
-			get { return this.name; }
-			set
+			get
 			{
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
 				//\x00 - end string
-				int null_offset = value.IndexOf('\x00');
-				this.name = (null_offset != -1) ? value.Substring(0, null_offset) : value;
-				OnPropertyChanged("Name");
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
 		}
 		public string Artist
 		{
-			get { return this.artist; }
-			set
+			get
 			{
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.artist_bytes));
 				//\x00 - end string
-				int null_offset = value.IndexOf('\x00');
-				this.artist = (null_offset != -1) ? value.Substring(0, null_offset) : value;
-				OnPropertyChanged("Artist");
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
 		}
 
-		public MSTrack(ElenmentId tdid, string tdname, int tid, string tname, string tartist)
+		public MSTrack(ElenmentId tdid, byte[] tdartist, int tid, byte[] tname, byte[] tartist)
 		{
 			this.disc_id = tdid;
 			this.id = tid;
-			//\x00 - end string
-			int null_offset = tdname.IndexOf('\x00');
-			this.disc_artist = (null_offset != -1) ? tdname.Substring(0, null_offset) : tdname;
-			//\x00 - end string
-			null_offset = tname.IndexOf('\x00');
-			this.name = (null_offset != -1) ? tname.Substring(0, null_offset) : tname;
-			//\x00 - end string
-			null_offset = tartist.IndexOf('\x00');
-			this.artist = (null_offset != -1) ? tartist.Substring(0, null_offset) : tartist;
+			this.disc_artist_bytes = tdartist;
+			this.name_bytes = tname;
+			this.artist_bytes = tartist;
 		}
 
 		protected void OnPropertyChanged(string name)

@@ -5,100 +5,102 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MMCS_MSE"
         mc:Ignorable="d"
-        Title="MMCS Music Server Editor" Height="515.094" Width="1394.339" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="#FF333333">
+        Title="MMCS Music Server Editor" Height="680" Width="1285.339" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="#FF333333">
     <Window.Resources>
         <ResourceDictionary Source="ExpressionDark.xaml"/>
     </Window.Resources>
-    <Grid Background="#FF58585D">
+    <Grid Background="#FF58585D" VerticalAlignment="Top" Height="653" Margin="0,0,0,-1">
         <Menu x:Name="menu" Height="24" VerticalAlignment="Top" Width="1388" Background="#FF333333" HorizontalAlignment="Left">
             <MenuItem Header="Open" Padding="6,3">
                 <MenuItem Header="AVUNIT directory" Margin="0" Width="136" Padding="0,3,2,3" Click="MenuItem_Click" HorizontalAlignment="Left"/>
             </MenuItem>
+            <MenuItem Header="Code Page" Height="24" Margin="0" VerticalAlignment="Top">
+                <MenuItem x:Name="iso_codepage" Header="Cyrillic (ISO 8859-5)" HorizontalAlignment="Left" Width="145" IsCheckable="True" Click="codepage_Click" IsChecked="True"/>
+                <MenuItem x:Name="jis_codepage" Header="Shift-JIS" HorizontalAlignment="Left" Width="145" IsCheckable="True" Click="codepage_Click"/>
+            </MenuItem>
         </Menu>
-        <Label x:Name="label" Content="Groups (max 100)" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
-        <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="10,145,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" MouseUp="GroupsListView_onclick" Background="#FF333333">
+        <Label x:Name="label" Content="Groups (max 100)" HorizontalAlignment="Left" Margin="8,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
+        <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="8,93,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" MouseUp="GroupsListView_onclick" Background="#FF333333">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Id" DisplayMemberBinding="{Binding Id}" Width="30"/>
-                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="240"/>
+                    <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}" Width="273"/>
                     <GridViewColumn DisplayMemberBinding="{Binding Lists.Count}" Header="Lists" Width="50"/>
                 </GridView>
             </ListView.View>
         </ListView>
-        <RadioButton x:Name="radioButton" Content="J-01" HorizontalAlignment="Left" Margin="10,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy" Content="J-03" HorizontalAlignment="Left" Margin="58,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy1" Content="N-04" HorizontalAlignment="Left" Margin="111,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy2" Content="N-04rus" HorizontalAlignment="Left" Margin="10,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy3" Content="N-04rus empty" HorizontalAlignment="Left" Margin="87,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy4" Content="N-04rus - 2s" HorizontalAlignment="Left" Margin="193,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy5" Content="N-04rus newcd" HorizontalAlignment="Left" Margin="291,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy6" Content="N-04rus necd - 1d" HorizontalAlignment="Left" Margin="409,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy7" Content="N-04rus newcd only" HorizontalAlignment="Left" Margin="542,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy8" Content="N-04rus newcd delother" HorizontalAlignment="Left" Margin="686,67,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton_Copy9" Content="R-03 empty" HorizontalAlignment="Left" Margin="164,46,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
-        <RadioButton x:Name="radioButton1" Content="iso-8859-5" HorizontalAlignment="Left" Margin="854,30,0,0" VerticalAlignment="Top" Checked="radioButton1_Checked"/>
-        <RadioButton x:Name="radioButton1_Copy" Content="shift_jis" HorizontalAlignment="Left" Margin="854,54,0,0" VerticalAlignment="Top" Checked="radioButton1_Checked"/>
-        <Button x:Name="editGroupButton" HorizontalAlignment="Left" Margin="234,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
+        <RadioButton x:Name="radioButton" Content="J-01" HorizontalAlignment="Left" Margin="32,537,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy" Content="J-03" HorizontalAlignment="Left" Margin="80,537,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy1" Content="N-04" HorizontalAlignment="Left" Margin="133,537,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy2" Content="N-04rus" HorizontalAlignment="Left" Margin="32,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy3" Content="N-04rus empty" HorizontalAlignment="Left" Margin="109,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy4" Content="N-04rus - 2s" HorizontalAlignment="Left" Margin="215,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy5" Content="N-04rus newcd" HorizontalAlignment="Left" Margin="313,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy6" Content="N-04rus necd - 1d" HorizontalAlignment="Left" Margin="431,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy7" Content="N-04rus newcd only" HorizontalAlignment="Left" Margin="564,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy8" Content="N-04rus newcd delother" HorizontalAlignment="Left" Margin="708,558,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy9" Content="R-03 empty" HorizontalAlignment="Left" Margin="186,537,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <Button x:Name="editGroupButton" HorizontalAlignment="Left" Margin="263,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/edit.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="delGroupButton" HorizontalAlignment="Left" Margin="281,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
+        <Button x:Name="delGroupButton" HorizontalAlignment="Left" Margin="297,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/remove.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="addGroupButton" HorizontalAlignment="Left" Margin="328,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
+        <Button x:Name="addGroupButton" HorizontalAlignment="Left" Margin="331,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/add.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="button" HorizontalAlignment="Left" Margin="367,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Copy Name to clipboard" Click="button_Click">
+        <Button x:Name="button" HorizontalAlignment="Left" Margin="365,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Copy Name to clipboard" Click="button_Click">
             <StackPanel>
                 <Image Source="Images/copy.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="editButtonTemplate" HorizontalAlignment="Left" Margin="677,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
+        <Button x:Name="editButtonTemplate" HorizontalAlignment="Left" Margin="697,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/edit.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="delButtonTemplate" HorizontalAlignment="Left" Margin="717,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Delete" IsEnabled="False">
+        <Button x:Name="delButtonTemplate" HorizontalAlignment="Left" Margin="731,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Delete" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/remove.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="addButtonTemplate" HorizontalAlignment="Left" Margin="757,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Add" IsEnabled="False">
+        <Button x:Name="addButtonTemplate" HorizontalAlignment="Left" Margin="765,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Add" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/add.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="copyButtonTemplate" HorizontalAlignment="Left" Margin="799,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="" IsEnabled="False">
+        <Button x:Name="copyButtonTemplate" HorizontalAlignment="Left" Margin="799,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/copy.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="editTrackButton" HorizontalAlignment="Left" Margin="1115,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
+        <Button x:Name="editTrackButton" HorizontalAlignment="Left" Margin="1131,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/edit.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="delTrackButton" HorizontalAlignment="Left" Margin="1155,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Delete" IsEnabled="False">
+        <Button x:Name="delTrackButton" HorizontalAlignment="Left" Margin="1165,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Delete" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/remove.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="addTrackButton" HorizontalAlignment="Left" Margin="1195,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Add" IsEnabled="False">
+        <Button x:Name="addTrackButton" HorizontalAlignment="Left" Margin="1199,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Add" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/add.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="copyTrackButton" HorizontalAlignment="Left" Margin="1235,115,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="" IsEnabled="False">
+        <Button x:Name="copyTrackButton" HorizontalAlignment="Left" Margin="1233,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/copy.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <ListView x:Name="listViewTemplate" HorizontalAlignment="Left" Height="310" Margin="408,145,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" MouseUp="listViewTemplate_onclick">
+        <ListView x:Name="listViewTemplate" HorizontalAlignment="Left" Height="310" Margin="408,93,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" MouseUp="listViewTemplate_onclick">
             <ListView.Background>
                 <SolidColorBrush Color="Gray"/>
             </ListView.Background>
@@ -108,13 +110,13 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Label x:Name="tableLableTemplate" Content="" HorizontalAlignment="Left" Margin="409,124,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
-        <ListView x:Name="TrackslistView" HorizontalAlignment="Left" Height="310" Margin="844,145,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" Background="Gray">
+        <Label x:Name="tableLableTemplate" Content="" HorizontalAlignment="Left" Margin="409,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
+        <ListView x:Name="TrackslistView" HorizontalAlignment="Left" Height="310" Margin="842,93,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" Background="Gray">
             <ListView.View>
                 <GridView/>
             </ListView.View>
         </ListView>
-        <Label x:Name="tracksLabelTemplate" Content="" HorizontalAlignment="Left" Margin="844,124,0,0" VerticalAlignment="Top" Width="88" Foreground="#FFFBEFEF" FontWeight="Bold"/>
-        <Label x:Name="artistTitlelabel" Content="" HorizontalAlignment="Left" Margin="937,124,0,0" VerticalAlignment="Top" Width="158" Foreground="#FFFBEFEF" FontWeight="Bold"/>
+        <Label x:Name="tracksLabelTemplate" Content="" HorizontalAlignment="Left" Margin="842,72,0,0" VerticalAlignment="Top" Width="88" Foreground="#FFFBEFEF" FontWeight="Bold"/>
+        <Label x:Name="artistTitlelabel" Content="" HorizontalAlignment="Left" Margin="935,72,0,0" VerticalAlignment="Top" Width="158" Foreground="#FFFBEFEF" FontWeight="Bold"/>
     </Grid>
 </Window>

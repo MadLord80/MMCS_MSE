@@ -40,10 +40,8 @@ namespace MMCS_MSE
             InitializeComponent();
             GroupsListView.ItemsSource = groups;
 
-			radioButton1.IsChecked = true;
-
 			radioButton_Copy2.IsChecked = true;
-
+			
 			editButtonTemplate.Click += new RoutedEventHandler(on_editList);
 			delButtonTemplate.Click += new RoutedEventHandler(on_delList);
 			addButtonTemplate.Click += new RoutedEventHandler(on_addList);
@@ -133,22 +131,23 @@ namespace MMCS_MSE
                 hf.spliceByteArray(group_desc, ref temp, 0, 4);
                 int group_id = BitConverter.ToInt32(temp, 0);
                 if (group_id == 0x010000ff) break;
+				ElenmentId[] lists = (gl.ContainsKey(group_id)) ? gl[group_id] : new ElenmentId[0];
 
-                string group_name = "";
+				string group_name = "";
                 hf.spliceByteArray(group_desc, ref temp, 4, 4);
+				byte[] group_name_bytes = new byte[0];
                 //←[tbl:NNN]
                 if (BitConverter.ToUInt32(temp,0) == 0x62745b1b)
                 {
                     string tbl_id = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 10, 3));
                     group_name = mserver.get_TBLdata(Convert.ToUInt32(tbl_id));
-                }
+					groups.Add(new MSGroup(group_id, group_name, lists));
+				}
                 else
                 {
-                    group_name = hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 4, group_desc.Length - 4), codePage);
-                }
-
-				ElenmentId[] lists = (gl.ContainsKey(group_id)) ? gl[group_id] : new ElenmentId[0];
-				groups.Add(new MSGroup(group_id, group_name, lists));
+                    hf.ByteArrayToString(hf.spliceByteArray(group_desc, ref temp, 4, group_desc.Length - 4), codePage);
+					groups.Add(new MSGroup(group_id, temp, lists));
+				}
             }
 			fs.Close();
         }
@@ -193,7 +192,7 @@ namespace MMCS_MSE
 				int songs_cnt = temp[0];
 
 				hf.spliceByteArray(list_data, ref temp, mserver.listName_offset, 4);
-				string list_name = "";
+				string list_name = ""; byte[] list_name_bytes = new byte[0];
 				//←[tbl:NNN]
 				if (BitConverter.ToUInt32(temp, 0) == 0x62745b1b)
 				{
@@ -203,7 +202,8 @@ namespace MMCS_MSE
 				else
 				{
 					hf.spliceByteArray(list_data, ref temp, mserver.listName_offset, mserver.listName_length);
-					list_name = hf.ByteArrayToString(temp, codePage);
+					Array.Resize(ref list_name_bytes, temp.Length);
+					temp.CopyTo(list_name_bytes, 0);
 				}
 
 				Dictionary<ElenmentId, int[]> songs = new Dictionary<ElenmentId, int[]>();
@@ -224,7 +224,14 @@ namespace MMCS_MSE
 					}
 				}
 
-				lists.Add(new MSList(lid, list_name, songs));
+				if (list_name_bytes.Length > 0)
+				{
+					lists.Add(new MSList(lid, list_name_bytes, songs));
+				}
+				else
+				{
+					lists.Add(new MSList(lid, list_name, songs));
+				}
 			}
 
 			fs.Close();
@@ -254,10 +261,14 @@ namespace MMCS_MSE
 				hf.spliceByteArray(disc_desc, ref temp, mserver.discId_offset, mserver.discId_length);
 				ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
 				hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset, mserver.discName_length);
-				string disc_name = hf.ByteArrayToString(temp, codePage);
+				//string disc_name = hf.ByteArrayToString(temp, codePage);
+				byte[] disc_name = new byte[temp.Length];
+				temp.CopyTo(disc_name, 0);
 				//Artist может не быть в ORG_ARRAY, но быть в TITLEXX000001.lst!
 				hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset + mserver.discName_length, mserver.discArtist_length);
-				string disc_artist = hf.ByteArrayToString(temp, codePage);
+				//string disc_artist = hf.ByteArrayToString(temp, codePage);
+				byte[] disc_artist = new byte[temp.Length];
+				temp.CopyTo(disc_artist, 0);
 				hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset + mserver.discName_length + mserver.discArtist_length, mserver.disc_songscnt_length);
 				int songs = BitConverter.ToInt32(temp, 0);
 
@@ -271,6 +282,13 @@ namespace MMCS_MSE
 			int[] readed_titles = new int[0];
 			foreach (MSDisc disc in discs)
 			{
+				string title_path = mserver.get_TITLEpath(disc.Id);
+				if (!File.Exists(title_path))
+				{
+					disc.Errors = title_path + " not found!";
+					continue;
+				}
+
 				if (Array.IndexOf(readed_titles, disc.Id.Id) != -1)
 				{
 					continue;
@@ -281,12 +299,6 @@ namespace MMCS_MSE
 					readed_titles[readed_titles.Length - 1] = disc.Id.Id;
 				}
 
-				string title_path = mserver.get_TITLEpath(disc.Id);
-				if (!File.Exists(title_path))
-				{
-					System.Windows.MessageBox.Show(title_path + " not found!");
-					continue;
-				}
 				FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.Read);
 
 				byte[] temp = new byte[0];
@@ -318,17 +330,24 @@ namespace MMCS_MSE
 
 					int songs_count = dtracks_data[mserver.songs_cnt_offset];
 
-					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length, mserver.dtArtist_length);
-					string disc_name = hf.ByteArrayToString(temp, codePage);
+					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
+					//string disc_artist = hf.ByteArrayToString(temp, codePage);
+					byte[] disc_artist = new byte[temp.Length];
+					temp.CopyTo(disc_artist, 0);
 
+					int tracks_desc_offset = mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length;
 					for (int i = 0; i < songs_count; i++)
 					{
 						int cur_offset = i * (mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length);
-						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + cur_offset, mserver.dtName_length);
-						string tname = hf.ByteArrayToString(temp, codePage);
-						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length, mserver.dtArtist_length);
-						string tart = hf.ByteArrayToString(temp, codePage);
-						tracks.Add(new MSTrack(disc_id, disc_name, i + 1, tname, tart));
+						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset, mserver.dtName_length);
+						//string tname = hf.ByteArrayToString(temp, codePage);
+						byte[] tname = new byte[temp.Length];
+						temp.CopyTo(tname, 0);
+						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
+						//string tart = hf.ByteArrayToString(temp, codePage);
+						byte[] tart = new byte[temp.Length];
+						temp.CopyTo(tart, 0);
+						tracks.Add(new MSTrack(disc_id, disc_artist, i + 1, tname, tart));
 					}
 				}
 
@@ -345,9 +364,9 @@ namespace MMCS_MSE
 			tableLableTemplate.Content = "Lists (max 100)";
 			GridView lview = new GridView();
 			listViewTemplate.View = lview;
-			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 40, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 240, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 280, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
 			triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name to clipboard";
 
@@ -368,12 +387,15 @@ namespace MMCS_MSE
 			artistTitlelabel.Content = "";
 			TrackslistView.ItemsSource = null;
 			tableLableTemplate.Content = "Discs";
+			
+			listViewTemplate.ItemContainerStyleSelector = new DiscStyleSelector();
+
 			GridView lview = new GridView();
 			listViewTemplate.View = lview;
-			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 70, DisplayMemberBinding = new System.Windows.Data.Binding("Id.FullId") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Id.FullId") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
 			listViewTemplate.ItemsSource = discs;
 			triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name-Artist to clipboard";
@@ -390,9 +412,9 @@ namespace MMCS_MSE
 				tracksLabelTemplate.Content = "Tracks (max 99)";
 				GridView lview = new GridView();
 				TrackslistView.View = lview;
-				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
-				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
+				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 				//triggerButtons(true);
 				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
 				fill_tracks(new Dictionary<ElenmentId, int[]> { {disc.Id, new int[0] } });
@@ -402,10 +424,10 @@ namespace MMCS_MSE
 				tracksLabelTemplate.Content = "Tracks";
 				GridView lview = new GridView();
 				TrackslistView.View = lview;
-				lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 70, DisplayMemberBinding = new System.Windows.Data.Binding("DiskId.FullId") });
-				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
-				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 150, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
+				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("DiskId.FullId") });
 				//triggerButtons(true);
 				MSList list = (listViewTemplate.SelectedItem as MSList);
 				fill_tracks(list.Songs);
@@ -532,13 +554,7 @@ namespace MMCS_MSE
 
 			initServer(dir);
 		}
-
-		private void radioButton1_Checked(object sender, RoutedEventArgs e)
-		{
-			System.Windows.Controls.RadioButton li = (sender as System.Windows.Controls.RadioButton);
-			codePage = li.Content.ToString();
-		}
-
+		
 		private void button_Click(object sender, RoutedEventArgs e)
 		{
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
@@ -550,6 +566,73 @@ namespace MMCS_MSE
 			if (listViewTemplate.SelectedItem == null) return;
 			
 			fill_tracks_table();
+		}
+
+		private void codepage_Click(object sender, RoutedEventArgs e)
+		{
+			System.Windows.Controls.MenuItem mi = (sender as System.Windows.Controls.MenuItem);
+
+			if (!mi.IsChecked)
+			{
+				mi.IsChecked = true;
+			}
+			else
+			{
+				if (mi.Header.ToString() == "Cyrillic (ISO 8859-5)")
+				{
+					codePage = "iso-8859-5";
+					jis_codepage.IsChecked = false;
+				}
+				else
+				{
+					codePage = "shift_jis";
+					iso_codepage.IsChecked = false;
+				}
+
+				foreach (MSGroup group in groups) {
+					group.CodePage = codePage;
+				}
+				foreach (MSList list in lists) {
+					list.CodePage = codePage;
+				}
+				foreach (MSDisc disc in discs) {
+					disc.CodePage = codePage;
+				}
+				foreach (MSTrack track in tracks) {
+					track.CodePage = codePage;
+				}
+			}
+		}
+	}
+
+	public class DiscStyleSelector : StyleSelector
+	{
+		public override Style SelectStyle(object item, DependencyObject container)
+		{
+			System.Windows.Controls.ListViewItem LVitem = (container as System.Windows.Controls.ListViewItem);
+
+			Type itemType = item.GetType();
+			if (itemType.Name != "MSDisc") return LVitem.Style;
+			MSDisc el = (item as MSDisc);
+			if (el.Errors == "") return LVitem.Style;
+			LVitem.ToolTip = el.Errors;
+
+			Style st = new Style(LVitem.Style.TargetType, LVitem.Style);
+			
+			foreach (Setter stb in LVitem.Style.Setters)
+			{
+				if (stb.Property == System.Windows.Controls.ListViewItem.ForegroundProperty)
+				{
+					Setter rrr = new Setter(stb.Property, Brushes.Red, stb.TargetName);
+					st.Setters.Add(rrr);
+				}
+				else
+				{
+					Setter rrr = new Setter(stb.Property, stb.Value, stb.TargetName);
+					st.Setters.Add(rrr);
+				}
+			}
+			return st;			
 		}
 	}
 }

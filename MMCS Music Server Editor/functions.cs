@@ -23,7 +23,7 @@ namespace MMCS_MSE
             return outstr;
         }
 
-        public byte[] StringToByteArray(string str, int length)
+		public byte[] StringToByteArray(string str, int length)
         {
             byte[] outarr = new byte[length];
             Encoding ascii = Encoding.ASCII;
