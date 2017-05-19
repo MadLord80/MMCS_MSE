@@ -35,19 +35,40 @@ namespace MMCS_MSE
 		private ObservableCollection<MSDisc> discs = new ObservableCollection<MSDisc>();
 		private ObservableCollection<MSTrack> tracks = new ObservableCollection<MSTrack>();
 
+		internal MSGroup MGroup
+		{
+			set
+			{
+				foreach (MSGroup g in groups)
+				{
+					if (value.Id == g.Id)
+					{
+						g.Name = value.Name;
+						break;
+					}
+				}
+			}
+		}
+
 		public MainWindow()
         {
             InitializeComponent();
-            GroupsListView.ItemsSource = groups;
+			
+			GridView lview = new GridView();
+			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 30, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 273, CellTemplateSelector = new GroupCellTemplateSelector() });
+			lview.Columns.Add(new GridViewColumn() { Header = "Lists", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("Lists.Count") });
+			GroupsListView.View = lview;
+			GroupsListView.ItemsSource = groups;
 
-			radioButton_Copy2.IsChecked = true;
+			//radioButton_Copy2.IsChecked = true;
 			
 			editButtonTemplate.Click += new RoutedEventHandler(on_editList);
 			delButtonTemplate.Click += new RoutedEventHandler(on_delList);
 			addButtonTemplate.Click += new RoutedEventHandler(on_addList);
 			copyButtonTemplate.Click += new RoutedEventHandler(on_copyList);
 		}
-
+		
 		private void triggerButtons(bool onoff)
 		{
 			editButtonTemplate.IsEnabled = onoff;
@@ -60,8 +81,8 @@ namespace MMCS_MSE
         {
             if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                string path = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_from_n04_with_rus\\AVUNIT";
-                opendir.SelectedPath = path;
+                //string path = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_from_n04_with_rus\\AVUNIT";
+                //opendir.SelectedPath = path;
 
                 string dir_path = opendir.SelectedPath;
 				initServer(dir_path);
@@ -341,7 +362,7 @@ namespace MMCS_MSE
 						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset, mserver.dtName_length);
 						byte[] tname = new byte[temp.Length];
 						temp.CopyTo(tname, 0);
-						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
+						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
 						byte[] tart = new byte[temp.Length];
 						temp.CopyTo(tart, 0);
 						tracks.Add(new MSTrack(disc_id, disc_artist, i + 1, tname, tart));
@@ -561,18 +582,29 @@ namespace MMCS_MSE
 
 		private void editGroupButton_Click(object sender, RoutedEventArgs e)
 		{
+			foreach (MSGroup group in groups) {
+				if (group.Id > 1) group.Changing = true;
+			}
+			GroupsListView.Items.Refresh();
+		}
+
+		private void addGroupButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (groups.Count == 0) return;
+			int newId = groups.Last().Id + 1;
+			byte[] newName = new byte[mserver.group_length - 4];
+			Array.ForEach(newName, b => b = 0x00);
+			byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New group");
+			Array.Copy(new_name, 0, newName, 0, new_name.Length);
+			groups.Add(new MSGroup(newId, newName, new ElenmentId[0]));
+		}
+
+		private void delGroupButton_Click(object sender, RoutedEventArgs e)
+		{
 			if (GroupsListView.SelectedItem == null) return;
-			//MSGroup group = (GroupsListView.SelectedItem as MSGroup);
-			//GridView gv = (GroupsListView.View as GridView);
-			//DataTemplate dt = new DataTemplate { DataType = typeof(MSGroup)};
-			//FrameworkElementFactory sp = new FrameworkElementFactory(typeof(StackPanel));
-			//sp.SetValue(StackPanel.OrientationProperty, System.Windows.Controls.Orientation.Horizontal);
-			//FrameworkElementFactory tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-			//tb.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Name"));
-			//sp.AppendChild(tb);
-			//dt.VisualTree = sp;
-			//gv.Columns[1].CellTemplate = dt;
-			//GroupsListView.View = gv;
+			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+			if (group.Id < 2) return;
+			groups.Remove(group);
 		}
 
 		private void listViewTemplate_onclick(object sender, MouseButtonEventArgs e)
@@ -617,7 +649,6 @@ namespace MMCS_MSE
 				}
 			}
 		}
-
 	}
 
 	public class DiscStyleSelector : StyleSelector
@@ -648,6 +679,40 @@ namespace MMCS_MSE
 				}
 			}
 			return st;			
+		}
+	}
+
+	public class GroupCellTemplateSelector : DataTemplateSelector
+	{
+		public override DataTemplate SelectTemplate(object item, DependencyObject container)
+		{
+			MSGroup group = (item as MSGroup);
+			FrameworkElementFactory tb;
+			if (group.Changing)
+			{
+				tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+				tb.SetBinding(System.Windows.Controls.TextBox.TextProperty, new System.Windows.Data.Binding("Name"));
+				tb.AddHandler(System.Windows.Controls.TextBox.KeyUpEvent, new System.Windows.Input.KeyEventHandler(GroupNameChange));
+			}
+			else
+			{
+				tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
+				tb.SetBinding(System.Windows.Controls.TextBlock.TextProperty, new System.Windows.Data.Binding("Name"));
+			}
+			return new DataTemplate { VisualTree = tb };
+		}
+
+		public void GroupNameChange(object sender, System.Windows.Input.KeyEventArgs e)
+		{
+			if (e.Key == Key.Return)
+			{
+				System.Windows.Controls.TextBox tb = (sender as System.Windows.Controls.TextBox);
+				MSGroup group = (tb.DataContext as MSGroup);
+				group.Name = tb.Text;
+				group.Changing = false;
+				((MainWindow)System.Windows.Application.Current.MainWindow).MGroup = group;
+				((MainWindow)System.Windows.Application.Current.MainWindow).GroupsListView.Items.Refresh();
+			}
 		}
 	}
 }

@@ -62,7 +62,7 @@ namespace MMCS_MSE
 		public int dtNameLoc_length = 0x40;
 		public int dtArtist_length = 0x80;
 		public int dtArtistLoc_length = 0x40;
-
+		
 		public string MainDir
 		{
 			set { this.main_dir = value; }
@@ -118,11 +118,23 @@ namespace MMCS_MSE
     {
         private int id;
         private string name = "";
-		private byte[] name_bytes = new byte[0];
+		private byte[] name_bytes = new byte[128];
 		private string codePage = "iso-8859-5";
 		private ElenmentId[] lists;
+
+		private bool changing = false;
         
         public event PropertyChangedEventHandler PropertyChanged;
+
+		public bool Changing
+		{
+			get { return this.changing; }
+			set
+			{
+				this.changing = value;
+				OnPropertyChanged("Changed");
+			}
+		}
 
         public int Id
         {
@@ -137,11 +149,19 @@ namespace MMCS_MSE
         {
 			get
 			{
-				if (this.name_bytes.Length == 0) return this.name;
+				//if (this.name_bytes.Length == 0) return this.name;
+				if (this.name != "") return this.name;
 				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
 				//\x00 - end string
 				int null_offset = name.IndexOf('\x00');
 				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+			}
+			set
+			{
+				byte[] new_name = Encoding.GetEncoding(this.codePage).GetBytes(value);
+				Array.Resize(ref new_name, this.name_bytes.Length);
+				Array.ForEach(this.name_bytes, b => b = 0x00);
+				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
 			}
 		}
 		public string CodePage
