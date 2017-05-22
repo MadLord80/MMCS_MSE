@@ -44,10 +44,16 @@ namespace MMCS_MSE
 					if (value.Id == g.Id)
 					{
 						g.Name = value.Name;
+						g.Lists = value.Lists;
 						break;
 					}
 				}
 			}
+		}
+
+		internal string CodePage
+		{
+			get { return this.codePage; }
 		}
 
 		public MainWindow()
@@ -61,17 +67,34 @@ namespace MMCS_MSE
 			GroupsListView.View = lview;
 			GroupsListView.ItemsSource = groups;
 
-			//radioButton_Copy2.IsChecked = true;
-			
+			//hideButtons(true);
+
 			editButtonTemplate.Click += new RoutedEventHandler(on_editList);
 			delButtonTemplate.Click += new RoutedEventHandler(on_delList);
 			addButtonTemplate.Click += new RoutedEventHandler(on_addList);
 			copyButtonTemplate.Click += new RoutedEventHandler(on_copyList);
 		}
+
+		private void hideButtons(bool hide)
+		{
+			Visibility vis = (hide) ? Visibility.Hidden : Visibility.Visible;
+			radioButton.Visibility = vis;
+			radioButton_Copy.Visibility = vis;
+			radioButton_Copy1.Visibility = vis;
+			radioButton_Copy2.Visibility = vis;
+			radioButton_Copy3.Visibility = vis;
+			radioButton_Copy4.Visibility = vis;
+			radioButton_Copy5.Visibility = vis;
+			radioButton_Copy6.Visibility = vis;
+			radioButton_Copy7.Visibility = vis;
+			radioButton_Copy8.Visibility = vis;
+			radioButton_Copy9.Visibility = vis;
+			radioButton_Copy10.Visibility = vis;
+		}
 		
 		private void triggerButtons(bool onoff)
 		{
-			editButtonTemplate.IsEnabled = onoff;
+			//editButtonTemplate.IsEnabled = onoff;
 			delButtonTemplate.IsEnabled = onoff;
 			addButtonTemplate.IsEnabled = onoff;
 			copyButtonTemplate.IsEnabled = onoff;
@@ -81,9 +104,6 @@ namespace MMCS_MSE
         {
             if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                //string path = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_from_n04_with_rus\\AVUNIT";
-                //opendir.SelectedPath = path;
-
                 string dir_path = opendir.SelectedPath;
 				initServer(dir_path);
 			}
@@ -93,9 +113,9 @@ namespace MMCS_MSE
 		{
 			mserver.MainDir = path;
 			fill_groups_table();
-			fill_lists_array();
 			fill_disks_array();
 			fill_tracks_array();
+			fill_lists_array();
 		}
 
         private void fill_groups_table()
@@ -226,23 +246,26 @@ namespace MMCS_MSE
 					Array.Resize(ref list_name_bytes, temp.Length);
 					temp.CopyTo(list_name_bytes, 0);
 				}
-
-				Dictionary<ElenmentId, int[]> songs = new Dictionary<ElenmentId, int[]>();
+				
+				MSTrack[] songs = new MSTrack[0];
+				string errors = "";
 				for (int i = 0; i < songs_cnt; i++)
 				{
 					hf.spliceByteArray(list_data, ref temp, mserver.list_desc_length + i * mserver.asong_data_length, mserver.asong_data_length);
-					ElenmentId disc = new ElenmentId(temp[3], temp[0]);
-					if (songs.ContainsKey(disc))
+					MSDisc disc = discs.Where(d => d.Id.Id == temp[3] && d.Id.Prefix == temp[0]).First();
+					if (disc == null)
 					{
-						int[] lsongs = songs[disc];
-						Array.Resize(ref lsongs, lsongs.Length + 1);
-						lsongs[lsongs.Length - 1] = temp[4];
-						songs[disc] = lsongs;
+						errors += "Disc " + temp[3] + "0000" + String.Format("{0,2:00}", temp[0]) + " not found!\n";
+						continue;
 					}
-					else
+					MSTrack[] track = tracks.Where(tr => tr.DiskId.Id == disc.Id.Id && tr.DiskId.Prefix == disc.Id.Prefix && tr.Id == temp[4]).ToArray();
+					if (track.Length == 0)
 					{
-						songs.Add(disc, new int[1] { temp[4] });
+						errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + temp[3] + "0000" + String.Format("{0,2:00}", temp[0]) + " not found!\n";
+						continue;
 					}
+					Array.Resize(ref songs, songs.Length + 1);
+					songs[songs.Length - 1] = track[0];
 				}
 
 				if (list_name_bytes.Length > 0)
@@ -253,6 +276,7 @@ namespace MMCS_MSE
 				{
 					lists.Add(new MSList(lid, list_name, songs));
 				}
+				lists.Where(l => l.Id == lid).First().Errors = errors;
 			}
 
 			fs.Close();
@@ -380,12 +404,15 @@ namespace MMCS_MSE
 			artistTitlelabel.Content = "";
 			TrackslistView.ItemsSource = null;
 			tableLableTemplate.Content = "Lists (max 100)";
+
+			listViewTemplate.ItemContainerStyleSelector = new DiscListStyleSelector();
+
 			GridView lview = new GridView();
 			listViewTemplate.View = lview;
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 280, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
-			//triggerButtons(true);
+			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Songs.Length") });
+			triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name to clipboard";
 
 			ObservableCollection<MSList> tlists = new ObservableCollection<MSList>();
@@ -406,7 +433,7 @@ namespace MMCS_MSE
 			TrackslistView.ItemsSource = null;
 			tableLableTemplate.Content = "Discs";
 			
-			listViewTemplate.ItemContainerStyleSelector = new DiscStyleSelector();
+			listViewTemplate.ItemContainerStyleSelector = new DiscListStyleSelector();
 
 			GridView lview = new GridView();
 			listViewTemplate.View = lview;
@@ -415,7 +442,7 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("SongsCnt") });
 			listViewTemplate.ItemsSource = discs;
-			//triggerButtons(true);
+			triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name-Artist to clipboard";
 		}
 
@@ -435,7 +462,7 @@ namespace MMCS_MSE
 				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 				//triggerButtons(true);
 				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
-				fill_tracks(new Dictionary<ElenmentId, int[]> { {disc.Id, new int[0] } });
+				fill_tracks(disc);
 			}
 			else
 			{
@@ -452,30 +479,16 @@ namespace MMCS_MSE
 			}
 		}
 
-		private void fill_tracks(Dictionary<ElenmentId, int[]> tracks_list)
+		private void fill_tracks(MSDisc disc)
 		{
-			ObservableCollection<MSTrack> ttracks = new ObservableCollection<MSTrack>();
-			foreach (KeyValuePair<ElenmentId, int[]> dlist in tracks_list)
-			{
-				if (dlist.Value.Length > 0)
-				{
-					for (int i = 0; i < dlist.Value.Length; i++)
-					{
-						foreach (MSTrack track in tracks.Where(t => t.DiskId.Id == dlist.Key.Id && t.DiskId.Prefix == dlist.Key.Prefix && t.Id == dlist.Value[i]))
-						{
-							ttracks.Add(track);
-						}
-					}
-				}
-				else
-				{
-					foreach (MSTrack track in tracks.Where(t => t.DiskId.Id == dlist.Key.Id && t.DiskId.Prefix == dlist.Key.Prefix))
-					{
-						if (track.DiscArtist != "") artistTitlelabel.Content = ": " + track.DiscArtist;
-						ttracks.Add(track);
-					}
-				}
-			}
+			MSTrack[] dtracks = tracks.Where(tr => tr.DiskId.Id == disc.Id.Id && tr.DiskId.Prefix == disc.Id.Prefix).ToArray();
+			if (dtracks.Length > 0) artistTitlelabel.Content = dtracks[0].DiscArtist;
+			fill_tracks(dtracks);
+		}
+
+		private void fill_tracks(MSTrack[] ltracks)
+		{
+			ObservableCollection<MSTrack> ttracks = new ObservableCollection<MSTrack>(ltracks);
 			TrackslistView.ItemsSource = ttracks;
 		}
 
@@ -486,12 +499,151 @@ namespace MMCS_MSE
 
 		private void on_delList(object sender, RoutedEventArgs args)
 		{
+			if (listViewTemplate.SelectedItem == null) return;
+			Type itemType = listViewTemplate.SelectedItem.GetType();
+			if (itemType.Name == "MSList")
+			{
+				MSList list = (listViewTemplate.SelectedItem as MSList);
+				if (list.Id < 3) return;
+				foreach (MSList alist in lists)
+				{
+					if (list.Id == alist.Id)
+					{
+						lists.Remove(alist);
+						break;
+					}
+				}
+
+				MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+				ElenmentId[] glists = group.Lists;
+				ElenmentId[] nglists = new ElenmentId[glists.Length - 1];
+				int newId = 0;
+				for (int i = 0; i < glists.Length; i++)
+				{
+					if (glists[i].Id == list.Id && glists[i].Prefix == 0)
+						continue;
+					nglists[newId] = glists[i];
+					newId++;
+				}
+				group.Lists = nglists;
+				this.MGroup = group;
+
+				fill_lists_table(group.Id);
+			}
+			else
+			{
+				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
+				MSTrack[] disc_tracks = tracks.Where(tr => tr.DiskId.Id == disc.Id.Id && tr.DiskId.Prefix == disc.Id.Prefix).ToArray();
+				foreach (MSList list in lists)
+				{
+					delListTracks(0, disc_tracks);
+				}
+				foreach (MSTrack ti in disc_tracks)
+				{
+					tracks.Remove(ti);
+				}
+				discs.Remove(disc);
+
+				//listViewTemplate.Items.Refresh();
+				//GroupsListView.Items.Refresh();
+			}
+		}
+
+		private void delListTracks(int listId, MSTrack[] songs)
+		{
+			MSList[] clists;
+			if (listId > 0)
+			{
+				clists = new MSList[1] { lists.Where(l => l.Id == listId).First() };
+			}
+			else
+			{
+				clists = lists.ToArray();
+			}
+
+			foreach (MSList list in clists)
+			{
+				MSTrack[] ntracks = new MSTrack[0];
+				foreach (MSTrack track in list.Songs)
+				{
+					MSTrack[] ltrack = songs.Where(ls => ls.DiskId.Id == track.DiskId.Id && ls.DiskId.Prefix == track.DiskId.Prefix && ls.Id == track.Id).ToArray();
+					if (ltrack.Length > 0) continue;
+					Array.Resize(ref ntracks, ntracks.Length + 1);
+					ntracks[ntracks.Length - 1] = ltrack[0];
+				}
+				list.Songs = ntracks;
+			}
+
+			if (listId > 0)
+			{
+				foreach (MSList li in lists)
+				{
+					if (li.Id == clists[0].Id)
+					{
+						li.Songs = clists[0].Songs;
+						break;
+					}
+				}
+			}
+			else
+			{
+				lists.Clear();
+				lists = new ObservableCollection<MSList>(clists);
+			}
 
 		}
 
 		private void on_addList(object sender, RoutedEventArgs args)
 		{
+			if (GroupsListView.SelectedItem == null) return;
+			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+						
+			if (group.Id > 0)
+			{
+				int newListId = lists.Last().Id + 1;
+				byte[] newName = new byte[mserver.listName_length];
+				Array.ForEach(newName, b => b = 0x00);
+				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New list");
+				Array.Copy(new_name, 0, newName, 0, new_name.Length);
+				lists.Add(new MSList(newListId, new_name, new MSTrack[0]));
 
+				ElenmentId[] glists = group.Lists;
+				Array.Resize(ref glists, glists.Length + 1);
+				glists[glists.Length - 1] = new ElenmentId(newListId, 0);
+				group.Lists = glists;
+				this.MGroup = group;
+
+				fill_lists_table(group.Id);
+			}
+			else
+			{
+				//неизвестно, как сервер выделяет новые индексы
+				//бывает просто: XX000001, где XX - новый индекс
+				//а бывает: YY000002, где YY - существующий индекс диска YY000001
+				int newDiscId = 0;
+				foreach (MSDisc disc in discs) {
+					if (disc.Id.Id >= newDiscId) newDiscId = disc.Id.Id;
+				}
+				newDiscId++;
+
+				byte[] newName = new byte[mserver.discName_length];
+				byte[] newArtist = new byte[mserver.discArtist_length];
+				Array.ForEach(newName, b => b = 0x00);
+				Array.ForEach(newArtist, b => b = 0x00);
+				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New disc");
+				byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
+				Array.Copy(new_name, 0, newName, 0, new_name.Length);
+				Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
+				discs.Add(new MSDisc(new ElenmentId(newDiscId, 1), newName, newArtist, 0));
+				
+				ElenmentId[] glists = group.Lists;
+				Array.Resize(ref glists, glists.Length + 1);
+				glists[glists.Length - 1] = new ElenmentId(newDiscId, 1);
+				group.Lists = glists;
+				this.MGroup = group;
+
+				fill_disks_table();
+			}
 		}
 
 		private void on_copyList(object sender, RoutedEventArgs args)
@@ -566,6 +718,9 @@ namespace MMCS_MSE
 				case "N-04rus newcd delother":
 					dir = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_from_n04_with_rus\\AVUNIT_newcdonly_delother";
 					break;
+				case "donnnn1":
+					dir = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\descr\\donnn1\\full\\AVUNIT";
+					break;
 				default:
 					break;
 			}
@@ -586,6 +741,7 @@ namespace MMCS_MSE
 				if (group.Id > 1) group.Changing = true;
 			}
 			GroupsListView.Items.Refresh();
+			saveGroupsButton.IsEnabled = true;
 		}
 
 		private void addGroupButton_Click(object sender, RoutedEventArgs e)
@@ -635,33 +791,45 @@ namespace MMCS_MSE
 					iso_codepage.IsChecked = false;
 				}
 
-				foreach (MSGroup group in groups) {
-					group.CodePage = codePage;
-				}
-				foreach (MSList list in lists) {
-					list.CodePage = codePage;
-				}
-				foreach (MSDisc disc in discs) {
-					disc.CodePage = codePage;
-				}
-				foreach (MSTrack track in tracks) {
-					track.CodePage = codePage;
-				}
+				GroupsListView.Items.Refresh();
+				listViewTemplate.Items.Refresh();
+				TrackslistView.Items.Refresh();
 			}
+		}
+
+		private void saveGroupsButton_Click(object sender, RoutedEventArgs e)
+		{
+			foreach (MSGroup group in GroupsListView.Items)
+			{
+				if (group.Id < 2) continue;
+				group.Changing = false;
+				this.MGroup = group;
+			}
+			GroupsListView.Items.Refresh();
+			GroupsListView.SelectedItem = null;
+			saveGroupsButton.IsEnabled = false;
 		}
 	}
 
-	public class DiscStyleSelector : StyleSelector
+	public class DiscListStyleSelector : StyleSelector
 	{
 		public override Style SelectStyle(object item, DependencyObject container)
 		{
 			System.Windows.Controls.ListViewItem LVitem = (container as System.Windows.Controls.ListViewItem);
 
 			Type itemType = item.GetType();
-			if (itemType.Name != "MSDisc") return LVitem.Style;
-			MSDisc el = (item as MSDisc);
-			if (el.Errors == "") return LVitem.Style;
-			LVitem.ToolTip = el.Errors;
+			if (itemType.Name == "MSDisc")
+			{
+				MSDisc el = (item as MSDisc);
+				if (el.Errors == "") return LVitem.Style;
+				LVitem.ToolTip = el.Errors;
+			}
+			else
+			{
+				MSList el = (item as MSList);
+				if (el.Errors == "") return LVitem.Style;
+				LVitem.ToolTip = el.Errors;
+			}
 
 			Style st = new Style(LVitem.Style.TargetType, LVitem.Style);
 			
