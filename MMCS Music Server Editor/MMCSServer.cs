@@ -14,18 +14,19 @@ namespace MMCS_MSE
 		private string INFO_path = "\\INFO";
 		private string ALBUM_path = "\\ALBUM";
 		private string TITLE_path = "\\TITLE";
-
-		//private string DATA_path = "\\DATA";
+		private string DATA_path = "\\DATA";
 		//private string CUSTOM_path = "\\CUSTOM";
 
 		//Settings
 		private string defALBUM_ID = "0000001";
         //INDEX
         public int cnt_disks_offset = 0x24;
-        public int cnt_groups = 100;
+        public int max_groups = 100;
         public int groups_offset = 0x28;
         public int group_length = 0x84;
-        public int lists_offset;
+		public int groupName_offset = 4;
+		public int groupName_length = 0x80;
+		public int lists_offset;
         public int list_length = 8;
 		//ALBUM
 		public int max_lists = 100;
@@ -71,7 +72,7 @@ namespace MMCS_MSE
         public MMCSServer()
         {
             //INDEX
-            lists_offset = groups_offset + cnt_groups * group_length;
+            lists_offset = groups_offset + max_groups * group_length;
 			//ALBUM
 			alists_offset = lists_size_offset + max_lists * list_size_length;
 			//TITLE
@@ -103,13 +104,21 @@ namespace MMCS_MSE
 			return path;
 		}
 
+		public string get_SCpath(ElenmentId disc, int track_id)
+		{
+			string disc_id = String.Format("{0,2:00}", BitConverter.ToString(new byte[1] { (byte)disc.Id }));
+			string track_file = String.Format("{0,3:000}", track_id);
+			string path = main_dir + DATA_path + DATA_path + disc_id + "\\" + disc.FullId + "\\" + track_file;
+			return path;
+		}
+
 		public string get_TBLdata(uint id)
         {
             string data = "";
-            if (id == 171) return "Оригинальные компакт-диски";
-            if (id == 172) return "Мои лучшие файлы";
-            if (id == 173) return "Часто воспроизводимые файлы";
-            if (id == 174) return "Любимые файлы";
+            if (id == 171) return "[171] Оригинальные компакт-диски";
+            if (id == 172) return "[172] Мои лучшие файлы";
+            if (id == 173) return "[173] Часто воспроизводимые файлы";
+            if (id == 174) return "[174] Любимые файлы";
             return data;
         }
     }
@@ -117,9 +126,9 @@ namespace MMCS_MSE
     class MSGroup : INotifyPropertyChanged
     {
         private int id;
-        private string name = "";
 		private byte[] name_bytes = new byte[128];
-		private ElenmentId[] lists;
+		private List<MSList> lists = new List<MSList>();
+		private List<MSDisc> discs = new List<MSDisc>();
 
 		private bool changing = false;
         
@@ -131,66 +140,92 @@ namespace MMCS_MSE
 			set
 			{
 				this.changing = value;
-				OnPropertyChanged("Changed");
+				//OnPropertyChanged("Changed");
 			}
 		}
 
         public int Id
         {
             get { return this.id; }
-            set
-            {
-                this.id = value;
-                OnPropertyChanged("Id");
-            }
         }
         public string Name
 		{
 			get
 			{
-				if (this.name != "") return this.name;
-
-				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
-				//\x00 - end string
-				int null_offset = name.IndexOf('\x00');
-				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+				string name = "";
+				//←[tbl:NNN]
+				if (this.name_bytes[0] == 0x1b && this.name_bytes[1] == 0x5b)
+				{
+					string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+					uint str_id = Convert.ToUInt32(Encoding.GetEncoding(codePage).GetString(new byte[3] { this.name_bytes[6], this.name_bytes[7], this.name_bytes[8] }));
+					MMCSServer ms = new MMCSServer();
+					name = ms.get_TBLdata(str_id);
+				}
+				else
+				{
+					string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+					name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
+					//\x00 - end string
+					int null_offset = name.IndexOf('\x00');
+					name = (null_offset != -1) ? name.Substring(0, null_offset) : name;
+				}
+				return name;
 			}
 			set
 			{
 				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
 				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
-				Array.Resize(ref new_name, this.name_bytes.Length);
-				Array.ForEach(this.name_bytes, b => b = 0x00);
+				if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
+				this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
 				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
+				OnPropertyChanged("Name");
 			}
 		}
-		public ElenmentId[] Lists
-        {
-            get { return this.lists; }
-            set
-            {
-                this.lists = value;
-                OnPropertyChanged("Lists");
-            }
-        }
+		public List<MSList> Lists
+		{
+			get { return this.lists; }
+		}
+		public List<MSDisc> Discs
+		{
+			get { return this.discs; }
+		}
+		public int Items
+		{
+			get
+			{
+				return (this.discs.Count > 0) ? this.discs.Count : this.lists.Count;
+			}
+		}
 
-		public MSGroup(int gid, byte[] gnbytes, ElenmentId[] glists)
+		public MSGroup(int gid, byte[] gnbytes)
+		{
+			this.id = gid;
+			this.name_bytes = gnbytes;
+		}
+		public MSGroup(int gid, byte[] gnbytes, List<MSList> glists)
 		{
 			this.id = gid;
 			this.name_bytes = gnbytes;
 			this.lists = glists;
-			//this.codePage = MMCS_MSE.MMCSServer
 		}
-
-		public MSGroup(int gid, string gname, ElenmentId[] glists)
-        {
-            this.id = gid;
-            //\x00 - end string
-            int null_offset = gname.IndexOf('\x00');
-            this.name = (null_offset != -1) ? gname.Substring(0, null_offset) : gname;
-            this.lists = glists;
-        }
+		public MSGroup(int gid, byte[] gnbytes, List<MSDisc> gdiscs)
+		{
+			this.id = gid;
+			this.name_bytes = gnbytes;
+			this.discs = gdiscs;
+		}
+		public MSGroup(int gid, byte[] gnbytes, MSList glist)
+		{
+			this.id = gid;
+			this.name_bytes = gnbytes;
+			this.lists.Add(glist);
+		}
+		public MSGroup(int gid, byte[] gnbytes, MSDisc gdisc)
+		{
+			this.id = gid;
+			this.name_bytes = gnbytes;
+			this.discs.Add(gdisc);
+		}
 
         protected void OnPropertyChanged(string name)
         {
@@ -204,9 +239,8 @@ namespace MMCS_MSE
 	class MSList : INotifyPropertyChanged
 	{
 		private int id;
-		private string name = "";
-		private byte[] name_bytes = new byte[0];
-		private MSTrack[] songs;
+		private byte[] name_bytes = new byte[384];
+		private List<MSTrack> songs = new List<MSTrack>();
 		private string errors = "";
 
 		public event PropertyChangedEventHandler PropertyChanged;
@@ -214,33 +248,43 @@ namespace MMCS_MSE
 		public int Id
 		{
 			get { return this.id; }
-			set
-			{
-				this.id = value;
-				OnPropertyChanged("Id");
-			}
 		}
 		public string Name
 		{
 			get
 			{
-				if (this.name_bytes.Length == 0) return this.name;
-
-				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
-				//\x00 - end string
-				int null_offset = name.IndexOf('\x00');
-				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+				string name = "";
+				//←[tbl:NNN]
+				if (this.name_bytes[0] == 0x1b && this.name_bytes[1] == 0x5b)
+				{
+					string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+					uint str_id = Convert.ToUInt32(Encoding.GetEncoding(codePage).GetString(new byte[3] { this.name_bytes[6], this.name_bytes[7], this.name_bytes[8] }));
+					MMCSServer ms = new MMCSServer();
+					name = ms.get_TBLdata(str_id);
+				}
+				else
+				{
+					string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+					name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
+					//\x00 - end string
+					int null_offset = name.IndexOf('\x00');
+					name = (null_offset != -1) ? name.Substring(0, null_offset) : name;
+				}
+				return name;
 			}
-		}
-		public MSTrack[] Songs
-		{
-			get { return this.songs; }
 			set
 			{
-				this.songs = value;
-				OnPropertyChanged("Songs");
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
+				this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
+				OnPropertyChanged("Name");
 			}
+		}
+		public List<MSTrack> Songs
+		{
+			get { return this.songs; }
 		}
 		public string Errors
 		{
@@ -248,25 +292,38 @@ namespace MMCS_MSE
 			set
 			{
 				this.errors = value;
-				OnPropertyChanged("Errors");
+				//OnPropertyChanged("Errors");
 			}
 		}
 
-		public MSList(int lid, string lname, MSTrack[] lsongs)
+		public MSList(int lid, byte[] lname)
 		{
 			this.id = lid;
-			//\x00 - end string
-			int null_offset = lname.IndexOf('\x00');
-			this.name = (null_offset != -1) ? lname.Substring(0, null_offset) : lname;
-			this.songs = lsongs;
-		}
 
-		public MSList(int lid, byte[] lname, MSTrack[] lsongs)
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (lname.Length > this.name_bytes.Length) Array.Resize(ref lname, this.name_bytes.Length);
+			Array.Copy(lname, 0, this.name_bytes, 0, lname.Length);
+		}
+		public MSList(int lid, byte[] lname, List<MSTrack> lsongs)
 		{
 			this.id = lid;
-			this.name_bytes = lname;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (lname.Length > this.name_bytes.Length) Array.Resize(ref lname, this.name_bytes.Length);
+			Array.Copy(lname, 0, this.name_bytes, 0, lname.Length);
+
 			this.songs = lsongs;
 		}
+		public MSList(int lid, byte[] lname, MSTrack lsong)
+		{
+			this.id = lid;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (lname.Length > this.name_bytes.Length) Array.Resize(ref lname, this.name_bytes.Length);
+			Array.Copy(lname, 0, this.name_bytes, 0, lname.Length);
+
+			this.songs.Add(lsong);
+		}	
 
 		protected void OnPropertyChanged(string name)
 		{
@@ -280,23 +337,30 @@ namespace MMCS_MSE
 	class MSDisc : INotifyPropertyChanged
 	{
 		private ElenmentId id;
-		private string name;
-		private byte[] name_bytes = new byte[0];
-		private string artist;
-		private byte[] artist_bytes = new byte[0];
-		private int songs_cnt;
-		private string errors;
+		private byte[] name_bytes = new byte[80];
+		private byte[] nameLoc_bytes = new byte[40];
+		private byte[] artist_bytes = new byte[80];
+		private byte[] artistLoc_bytes = new byte[40];
+		private List<MSTrack> tracks = new List<MSTrack>();
+		private string errors = "";
+
+		private bool changing = false;
 
 		public event PropertyChangedEventHandler PropertyChanged;
-		
+
+		public bool Changing
+		{
+			get { return this.changing; }
+			set
+			{
+				this.changing = value;
+				//OnPropertyChanged("Changed");
+			}
+		}
+
 		public ElenmentId Id
 		{
 			get { return this.id; }
-			set
-			{
-				this.id = value;
-				OnPropertyChanged("Id");
-			}
 		}
 		public string Name
 		{
@@ -307,6 +371,35 @@ namespace MMCS_MSE
 				//\x00 - end string
 				int null_offset = name.IndexOf('\x00');
 				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+			}
+			set
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
+				this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
+				OnPropertyChanged("Name");
+			}
+		}
+		public string NameLoc
+		{
+			get
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.nameLoc_bytes));
+				//\x00 - end string
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+			}
+			set
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_nameLoc = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_nameLoc.Length > this.nameLoc_bytes.Length) Array.Resize(ref new_nameLoc, this.nameLoc_bytes.Length);
+				this.nameLoc_bytes = Enumerable.Repeat((byte)0x00, this.nameLoc_bytes.Length).ToArray();
+				Array.Copy(new_nameLoc, 0, this.nameLoc_bytes, 0, new_nameLoc.Length);
+				OnPropertyChanged("NameLoc");
 			}
 		}
 		public string Artist
@@ -319,34 +412,102 @@ namespace MMCS_MSE
 				int null_offset = name.IndexOf('\x00');
 				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
-		}
-		public int SongsCnt
-		{
-			get { return this.songs_cnt; }
 			set
 			{
-				this.songs_cnt = value;
-				OnPropertyChanged("SongsCnt");
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_artist.Length > this.artist_bytes.Length) Array.Resize(ref new_artist, this.artist_bytes.Length);
+				this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
+				Array.Copy(new_artist, 0, this.artist_bytes, 0, new_artist.Length);
+				OnPropertyChanged("Artist");
 			}
+		}
+		public string ArtistLoc
+		{
+			get
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.artistLoc_bytes));
+				//\x00 - end string
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+			}
+			set
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_artistLoc = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_artistLoc.Length > this.artistLoc_bytes.Length) Array.Resize(ref new_artistLoc, this.artistLoc_bytes.Length);
+				this.artistLoc_bytes = Enumerable.Repeat((byte)0x00, this.artistLoc_bytes.Length).ToArray();
+				Array.Copy(new_artistLoc, 0, this.artistLoc_bytes, 0, new_artistLoc.Length);
+				OnPropertyChanged("ArtistLoc");
+			}
+		}
+		public List<MSTrack> Tracks
+		{
+			get { return this.tracks; }
 		}
 		public string Errors
 		{
 			get { return this.errors; }
 			set
 			{
-				this.errors = value;
-				OnPropertyChanged("Errors");
+				this.errors += value + "\n";
+				//OnPropertyChanged("Errors");
 			}
 		}
 
-		public MSDisc(ElenmentId did, byte[] dname, byte[] dartist, int dsongs)
+		public MSDisc(ElenmentId did, byte[] dname)
 		{
 			this.id = did;
-			this.name_bytes = dname;
-			this.artist_bytes = dartist;
-			this.songs_cnt = dsongs;
 
-			this.errors = "";
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (dname.Length > this.name_bytes.Length) Array.Resize(ref dname, this.name_bytes.Length);
+			Array.Copy(dname, 0, this.name_bytes, 0, dname.Length);
+		}
+		public MSDisc(ElenmentId did, byte[] dname, byte[] dartist)
+		{
+			this.id = did;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (dname.Length > this.name_bytes.Length) Array.Resize(ref dname, this.name_bytes.Length);
+			Array.Copy(dname, 0, this.name_bytes, 0, dname.Length);
+
+			this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
+			if (dartist.Length > this.artist_bytes.Length) Array.Resize(ref dartist, this.artist_bytes.Length);
+			Array.Copy(dartist, 0, this.artist_bytes, 0, dartist.Length);
+		}
+		public MSDisc(ElenmentId did, byte[] dname, List<MSTrack> dtracks)
+		{
+			this.id = did;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (dname.Length > this.name_bytes.Length) Array.Resize(ref dname, this.name_bytes.Length);
+			Array.Copy(dname, 0, this.name_bytes, 0, dname.Length);
+
+			this.tracks = dtracks;
+		}
+		public MSDisc(ElenmentId did, byte[] dname, MSTrack dtrack)
+		{
+			this.id = did;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (dname.Length > this.name_bytes.Length) Array.Resize(ref dname, this.name_bytes.Length);
+			Array.Copy(dname, 0, this.name_bytes, 0, dname.Length);
+
+			this.tracks.Add(dtrack);
+		}
+		public MSDisc(ElenmentId did, byte[] dname, byte[] dnameLoc, List<MSTrack> dtracks)
+		{
+			this.id = did;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (dname.Length > this.name_bytes.Length) Array.Resize(ref dname, this.name_bytes.Length);
+			Array.Copy(dname, 0, this.name_bytes, 0, dname.Length);
+			this.nameLoc_bytes = Enumerable.Repeat((byte)0x00, this.nameLoc_bytes.Length).ToArray();
+			if (dnameLoc.Length > this.nameLoc_bytes.Length) Array.Resize(ref dnameLoc, this.nameLoc_bytes.Length);
+			Array.Copy(dnameLoc, 0, this.nameLoc_bytes, 0, dnameLoc.Length);
+
+			this.tracks = dtracks;
 		}
 
 		protected void OnPropertyChanged(string name)
@@ -360,48 +521,18 @@ namespace MMCS_MSE
 
 	class MSTrack : INotifyPropertyChanged
 	{
-		private ElenmentId disc_id;
-		//private string disc_name;
-		//private string disc_name_loc;
-		private string disc_artist;
-		private byte[] disc_artist_bytes = new byte[0];
-		//private string disc_artist_loc;
 		private int id;
-		private string name;
-		private byte[] name_bytes = new byte[0];
-		private string artist;
-		private byte[] artist_bytes = new byte[0];
+		private byte[] name_bytes = new byte[80];
+		private byte[] nameLoc_bytes = new byte[40];
+		private byte[] artist_bytes = new byte[80];
+		private byte[] artistLoc_bytes = new byte[40];
+		private bool is_exist = true;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public ElenmentId DiskId
-		{
-			get { return this.disc_id; }
-			set
-			{
-				this.disc_id = value;
-				OnPropertyChanged("DiskId");
-			}
-		}
-		public string DiscArtist
-		{
-			get
-			{
-				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.disc_artist_bytes));
-				//\x00 - end string
-				int null_offset = name.IndexOf('\x00');
-				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
-			}
-		}
 		public int Id
 		{
 			get { return this.id; }
-			set
-			{
-				this.id = value;
-				OnPropertyChanged("Id");
-			}
 		}
 		public string File
 		{
@@ -417,6 +548,15 @@ namespace MMCS_MSE
 				int null_offset = name.IndexOf('\x00');
 				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
+			set
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
+				this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
+				OnPropertyChanged("Name");
+			}
 		}
 		public string Artist
 		{
@@ -428,15 +568,91 @@ namespace MMCS_MSE
 				int null_offset = name.IndexOf('\x00');
 				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 			}
+			set
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_artist.Length > this.artist_bytes.Length) Array.Resize(ref new_artist, this.artist_bytes.Length);
+				this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
+				Array.Copy(new_artist, 0, this.artist_bytes, 0, new_artist.Length);
+				OnPropertyChanged("Artist");
+			}
+		}
+		public string NameLoc
+		{
+			get
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.nameLoc_bytes));
+				//\x00 - end string
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+			}
+			set
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_nameLoc = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_nameLoc.Length > this.nameLoc_bytes.Length) Array.Resize(ref new_nameLoc, this.nameLoc_bytes.Length);
+				this.nameLoc_bytes = Enumerable.Repeat((byte)0x00, this.nameLoc_bytes.Length).ToArray();
+				Array.Copy(new_nameLoc, 0, this.nameLoc_bytes, 0, new_nameLoc.Length);
+				OnPropertyChanged("NameLoc");
+			}
+		}
+		public string ArtistLoc
+		{
+			get
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				string name = new string(Encoding.GetEncoding(codePage).GetChars(this.artistLoc_bytes));
+				//\x00 - end string
+				int null_offset = name.IndexOf('\x00');
+				return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+			}
+			set
+			{
+				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				byte[] new_artistLoc = Encoding.GetEncoding(codePage).GetBytes(value);
+				if (new_artistLoc.Length > this.artistLoc_bytes.Length) Array.Resize(ref new_artistLoc, this.artistLoc_bytes.Length);
+				this.artistLoc_bytes = Enumerable.Repeat((byte)0x00, this.artistLoc_bytes.Length).ToArray();
+				Array.Copy(new_artistLoc, 0, this.artistLoc_bytes, 0, new_artistLoc.Length);
+				OnPropertyChanged("ArtistLoc");
+			}
+		}
+		public bool Exists
+		{
+			get { return this.is_exist; }
+			set { this.is_exist = value; }
 		}
 
-		public MSTrack(ElenmentId tdid, byte[] tdartist, int tid, byte[] tname, byte[] tartist)
+		public MSTrack(int tid, byte[] tname, byte[] tartist)
 		{
-			this.disc_id = tdid;
 			this.id = tid;
-			this.disc_artist_bytes = tdartist;
-			this.name_bytes = tname;
-			this.artist_bytes = tartist;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (tname.Length > this.name_bytes.Length) Array.Resize(ref tname, this.name_bytes.Length);
+			Array.Copy(tname, 0, this.name_bytes, 0, tname.Length);
+
+			this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
+			if (tartist.Length > this.artist_bytes.Length) Array.Resize(ref tartist, this.artist_bytes.Length);
+			Array.Copy(tartist, 0, this.artist_bytes, 0, tartist.Length);
+		}
+		public MSTrack(int tid, byte[] tname, byte[] tnameLoc, byte[] tartist, byte[] tartistLoc)
+		{
+			this.id = tid;
+
+			this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+			if (tname.Length > this.name_bytes.Length) Array.Resize(ref tname, this.name_bytes.Length);
+			Array.Copy(tname, 0, this.name_bytes, 0, tname.Length);
+			this.nameLoc_bytes = Enumerable.Repeat((byte)0x00, this.nameLoc_bytes.Length).ToArray();
+			if (tnameLoc.Length > this.nameLoc_bytes.Length) Array.Resize(ref tnameLoc, this.nameLoc_bytes.Length);
+			Array.Copy(tnameLoc, 0, this.nameLoc_bytes, 0, tnameLoc.Length);
+
+			this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
+			if (tartist.Length > this.artist_bytes.Length) Array.Resize(ref tartist, this.artist_bytes.Length);
+			Array.Copy(tartist, 0, this.artist_bytes, 0, tartist.Length);
+			this.artistLoc_bytes = Enumerable.Repeat((byte)0x00, this.artistLoc_bytes.Length).ToArray();
+			if (tartistLoc.Length > this.artistLoc_bytes.Length) Array.Resize(ref tartistLoc, this.artistLoc_bytes.Length);
+			Array.Copy(tartistLoc, 0, this.artistLoc_bytes, 0, tartistLoc.Length);
 		}
 
 		protected void OnPropertyChanged(string name)
@@ -456,12 +672,10 @@ namespace MMCS_MSE
 		public int Id
 		{
 			get { return this.id; }
-			set { this.id = value; }
 		}
 		public int Prefix
 		{
 			get { return this.prefix; }
-			set { this.prefix = value; }
 		}
 		public string FullId
 		{

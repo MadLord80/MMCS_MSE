@@ -111,7 +111,6 @@
             </ListView.View>
         </ListView>
         <Label x:Name="tracksLabelTemplate" Content="" HorizontalAlignment="Left" Margin="842,72,0,0" VerticalAlignment="Top" Width="88" Foreground="#FFFBEFEF" FontWeight="Bold"/>
-        <Label x:Name="artistTitlelabel" Content="" HorizontalAlignment="Left" Margin="935,72,0,0" VerticalAlignment="Top" Width="158" Foreground="#FFFBEFEF" FontWeight="Bold"/>
         <Button x:Name="saveGroupsButton" Content="Save" HorizontalAlignment="Left" Margin="315,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveGroupsButton_Click"/>
         <RadioButton x:Name="radioButton_Copy10" Content="donnnn1" HorizontalAlignment="Left" Margin="263,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
     </Grid>
