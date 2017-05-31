@@ -16,6 +16,7 @@ using System.Windows.Shapes;
 using System.Windows.Forms;
 using System.IO;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 
 namespace MMCS_MSE
 {
@@ -34,23 +35,7 @@ namespace MMCS_MSE
 		private ObservableCollection<MSGroup> groups = new ObservableCollection<MSGroup>();
 		private ObservableCollection<MSList> lists = new ObservableCollection<MSList>();
 		private ObservableCollection<MSDisc> discs = new ObservableCollection<MSDisc>();
-
-		//internal MSGroup MGroup
-		//{
-		//	set
-		//	{
-		//		foreach (MSGroup g in groups)
-		//		{
-		//			if (value.Id == g.Id)
-		//			{
-		//				g.Name = value.Name;
-		//				//g.Lists = value.Lists;
-		//				break;
-		//			}
-		//		}
-		//	}
-		//}
-
+		
 		internal string CodePage
 		{
 			get { return this.codePage; }
@@ -62,10 +47,13 @@ namespace MMCS_MSE
 			
 			GridView lview = new GridView();
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 30, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 273, CellTemplateSelector = new EditCellTemplateSelector() });
+			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 273, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Items", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("Items") });
 			GroupsListView.View = lview;
 			GroupsListView.ItemsSource = groups;
+
+			((INotifyCollectionChanged)listViewTemplate.Items).CollectionChanged += ListView_CollectionChanged;
+			((INotifyCollectionChanged)TrackslistView.Items).CollectionChanged += ListView_CollectionChanged;
 
 			//hideButtons(true);
 
@@ -73,6 +61,11 @@ namespace MMCS_MSE
 			delButtonTemplate.Click += new RoutedEventHandler(on_delList);
 			addButtonTemplate.Click += new RoutedEventHandler(on_addList);
 			copyButtonTemplate.Click += new RoutedEventHandler(on_copyList);
+
+			//editTrackButton.Click += new RoutedEventHandler(on_editTrack);
+			//delTrackButton.Click += new RoutedEventHandler(on_delTrack);
+			//addTrackButton.Click += new RoutedEventHandler(on_addTrack);
+			copyTrackButton.Click += new RoutedEventHandler(on_copyTrack);
 		}
 
 		private void hideButtons(bool hide)
@@ -92,15 +85,22 @@ namespace MMCS_MSE
 			radioButton_Copy10.Visibility = vis;
 		}
 		
-		private void triggerButtons(bool onoff)
+		private void triggerLDButtons(bool onoff)
 		{
 			editButtonTemplate.IsEnabled = onoff;
 			delButtonTemplate.IsEnabled = onoff;
 			addButtonTemplate.IsEnabled = onoff;
 			copyButtonTemplate.IsEnabled = onoff;
 		}
+		private void triggerTButtons(bool onoff)
+		{
+			//editTrackButton.IsEnabled = onoff;
+			//delTrackButton.IsEnabled = onoff;
+			//addTrackButton.IsEnabled = onoff;
+			copyTrackButton.IsEnabled = onoff;
+		}
 
-        private void MenuItem_Click(object sender, RoutedEventArgs e)
+		private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
             if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
@@ -122,14 +122,26 @@ namespace MMCS_MSE
 			fill_groups_table();
 		}
 
-		private void fill_groups_table()
-        {
+		private void clearLDTTables()
+		{
+			clearLDTTables("all");
+		}
+		private void clearLDTTables(string table)
+		{
+			if (table != "tracks")
+			{
+				listViewTemplate.View = null;
+				listViewTemplate.ItemsSource = null;
+			}
+
 			tracksLabelTemplate.Content = "";
 			TrackslistView.View = null;
-			//tableLableTemplate.Content = "";
-			listViewTemplate.View = null;
-			listViewTemplate.ItemsSource = null;
-			triggerButtons(false);
+			TrackslistView.ItemsSource = null;
+		}
+
+		private void fill_groups_table()
+        {
+			clearLDTTables();
 
 			string info_path = mserver.get_INDEXpath();
 			if (!File.Exists(info_path))
@@ -413,9 +425,7 @@ namespace MMCS_MSE
 
 		private void fill_lists_table()
 		{
-			tracksLabelTemplate.Content = "";
-			TrackslistView.View = null;
-			TrackslistView.ItemsSource = null;
+			clearLDTTables();
 			tableLableTemplate.Content = "Lists (max 100)";
 
 			listViewTemplate.ItemContainerStyleSelector = new DiscListStyleSelector();
@@ -425,7 +435,6 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 280, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Songs.Count") });
-			triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name to clipboard";
 			
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
@@ -434,9 +443,7 @@ namespace MMCS_MSE
 
 		private void fill_disks_table()
 		{
-			tracksLabelTemplate.Content = "";
-			TrackslistView.View = null;
-			TrackslistView.ItemsSource = null;
+			clearLDTTables();
 			tableLableTemplate.Content = "Discs";
 			
 			listViewTemplate.ItemContainerStyleSelector = new DiscListStyleSelector();
@@ -444,13 +451,11 @@ namespace MMCS_MSE
 			GridView lview = new GridView();
 			listViewTemplate.View = lview;
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Id.FullId") });
-			//lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, CellTemplateSelector = new EditCellTemplateSelector() });
+			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Tracks.Count") });
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			listViewTemplate.ItemsSource = group.Discs;
-			triggerButtons(true);
 			copyButtonTemplate.ToolTip = "Copy Name-Artist to clipboard";
 		}
 
@@ -466,27 +471,20 @@ namespace MMCS_MSE
 				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
-				//triggerButtons(true);
 				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
-				//fill_tracks(disc);
 				TrackslistView.ItemsSource = disc.Tracks;
+				copyTrackButton.ToolTip = "Copy Name-Artist to clipboard";
 			}
 			else
 			{
 				tracksLabelTemplate.Content = "Tracks";
 				GridView lview = new GridView();
 				TrackslistView.View = lview;
-				//lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
-				//lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-				//lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
-				//lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("DiskId.FullId") });
-				//triggerButtons(true);
 				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Key.File") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Key.Name") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Key.Artist") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Value.Id.FullId") });
 				MSList list = (listViewTemplate.SelectedItem as MSList);
-				//fill_tracks(list.Songs);
 				Dictionary<MSTrack, MSDisc> ls = new Dictionary<MSTrack, MSDisc>();
 				foreach (MSTrack lt in list.Songs)
 				{
@@ -494,24 +492,35 @@ namespace MMCS_MSE
 					ls.Add(lt, td);
 				}
 				TrackslistView.ItemsSource = ls;
-				//TrackslistView.ItemsSource = list.Songs;
+				copyTrackButton.ToolTip = "Copy DiscId: Name-Artist to clipboard";
 			}
 		}
 		
 		private void on_editList(object sender, RoutedEventArgs args)
 		{
 			if (GroupsListView.SelectedItem == null) return;
+
+			listViewTemplate.SelectedItem = null;
+			clearLDTTables("tracks");
+
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+			GridView gv = (listViewTemplate.View as GridView);
+
 			if (group.Id > 0)
 			{
-
+				gv.Columns[1].DisplayMemberBinding = null;
+				gv.Columns[1].CellTemplateSelector = new EditCellTemplateSelector();
 			}
 			else
 			{
-				group.Discs.ForEach(d => d.Changing = true);
+				gv.Columns[1].DisplayMemberBinding = null;
+				gv.Columns[1].CellTemplateSelector = new EditCellTemplateSelector();
+				gv.Columns[2].DisplayMemberBinding = null;
+				gv.Columns[2].CellTemplateSelector = new EditCellTemplateSelector("Artist");
 			}
+
 			listViewTemplate.Items.Refresh();
-			//saveGroupsButton.IsEnabled = true;
+			saveLDButton.IsEnabled = true;
 		}
 
 		private void on_delList(object sender, RoutedEventArgs args)
@@ -659,6 +668,25 @@ namespace MMCS_MSE
 			}
 		}
 
+		private void on_copyTrack(object sender, RoutedEventArgs args)
+		{
+			if (TrackslistView.SelectedItem == null) return;
+			Type itemType = TrackslistView.SelectedItem.GetType();
+			if (itemType.Name == "MSTrack")
+			{
+				MSTrack track = (TrackslistView.SelectedItem as MSTrack);
+				string na = (track.Artist == "") ? track.Name : track.Name + " - " + track.Artist;
+				System.Windows.Clipboard.SetText(na);
+			}
+			else
+			{
+				//Dictionary<MSTrack, MSDisc> ls = (TrackslistView.SelectedItem as Dictionary<MSTrack, MSDisc>);
+				KeyValuePair<MSTrack, MSDisc> ls = (TrackslistView.SelectedItem as KeyValuePair<MSTrack, MSDisc>);
+				string na = (ls.Keys.First().Artist == "") ? ls.Values.First().Id.FullId + ": " + ls.Keys.First().Name : ls.Values.First().Id.FullId + ": " + ls.Keys.First().Name + " - " + ls.Keys.First().Artist;
+				System.Windows.Clipboard.SetText(na);
+			}
+		}
+
 		private void GroupsListView_onclick(object sender, MouseButtonEventArgs e)
         {
 			if (GroupsListView.SelectedItem == null) return;
@@ -732,9 +760,13 @@ namespace MMCS_MSE
 
 		private void editGroupButton_Click(object sender, RoutedEventArgs e)
 		{
-			foreach (MSGroup group in groups) {
-				if (group.Id > 1) group.Changing = true;
-			}
+			GroupsListView.SelectedItem = null;
+			clearLDTTables();
+
+			GridView gv = (GroupsListView.View as GridView);
+			gv.Columns[1].DisplayMemberBinding = null;
+			gv.Columns[1].CellTemplateSelector = new EditCellTemplateSelector();
+
 			GroupsListView.Items.Refresh();
 			saveGroupsButton.IsEnabled = true;
 		}
@@ -798,14 +830,37 @@ namespace MMCS_MSE
 
 		private void saveGroupsButton_Click(object sender, RoutedEventArgs e)
 		{
-			foreach (MSGroup group in GroupsListView.Items)
-			{
-				if (group.Id < 2) continue;
-				group.Changing = false;
-			}
+			GridView gv = (GroupsListView.View as GridView);
+			gv.Columns[1].DisplayMemberBinding = new System.Windows.Data.Binding("Name");
+			gv.Columns[1].CellTemplateSelector = null;
+
 			GroupsListView.Items.Refresh();
-			GroupsListView.SelectedItem = null;
 			saveGroupsButton.IsEnabled = false;
+		}
+
+		private void saveLDButton_Click(object sender, RoutedEventArgs e)
+		{
+			GridView gv = (listViewTemplate.View as GridView);
+			if (gv == null || gv.Columns.Count == 0) return;
+
+			gv.Columns[1].DisplayMemberBinding = new System.Windows.Data.Binding("Name");
+			gv.Columns[1].CellTemplateSelector = null;
+			if (gv.Columns.Count == 4)
+			{
+				gv.Columns[2].DisplayMemberBinding = new System.Windows.Data.Binding("Artist");
+				gv.Columns[2].CellTemplateSelector = null;
+			}
+
+			listViewTemplate.Items.Refresh();
+			saveLDButton.IsEnabled = false;
+		}
+		
+		private void ListView_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+		{
+			bool tButtons = (listViewTemplate.SelectedItem == null) ? false : true;
+			bool ldButtons = (GroupsListView.SelectedItem == null) ? false : true;
+			triggerLDButtons(ldButtons);
+			triggerTButtons(tButtons);
 		}
 	}
 
@@ -850,42 +905,49 @@ namespace MMCS_MSE
 
 	public class EditCellTemplateSelector : DataTemplateSelector
 	{
+		private string bindString;
+
 		public override DataTemplate SelectTemplate(object item, DependencyObject container)
 		{
-			FrameworkElement element = (container as FrameworkElement);
-			//var _Container = Library.TreeHelper.TryFindParent<MyUserControl>(container);
-			//element.FindResource("ButtonTemplate") as DataTemplate;
-			Type itemType = item.GetType();
-
 			FrameworkElementFactory tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
+			DependencyProperty tp = System.Windows.Controls.TextBlock.TextProperty;
+
+			Type itemType = item.GetType();
 			if (itemType.Name == "MSGroup")
 			{
 				MSGroup group = (item as MSGroup);
-				if (group.Changing)
+				if (group.Id > 1)
 				{
 					tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-					tb.SetBinding(System.Windows.Controls.TextBox.TextProperty, new System.Windows.Data.Binding("Name"));
-					//tb.AddHandler(System.Windows.Controls.TextBox.KeyUpEvent, new System.Windows.Input.KeyEventHandler(GroupNameChange));
-				}
-				else
-				{
-					tb.SetBinding(System.Windows.Controls.TextBlock.TextProperty, new System.Windows.Data.Binding("Name"));
+					tp = System.Windows.Controls.TextBox.TextProperty;
 				}
 			}
+			else if (itemType.Name == "MSDisc")
+			{
+				tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+				tp = System.Windows.Controls.TextBox.TextProperty;
+			}
+			else if (itemType.Name == "MSList")
+			{
+				MSList list = (item as MSList);
+				if (list.Id > 2)
+				{
+					tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+					tp = System.Windows.Controls.TextBox.TextProperty;
+				}
+			}
+
+			tb.SetBinding(tp, new System.Windows.Data.Binding(this.bindString));
 			return new DataTemplate { VisualTree = tb };
 		}
 
-		//public void GroupNameChange(object sender, System.Windows.Input.KeyEventArgs e)
-		//{
-		//	if (e.Key == Key.Return)
-		//	{
-		//		System.Windows.Controls.TextBox tb = (sender as System.Windows.Controls.TextBox);
-		//		MSGroup group = (tb.DataContext as MSGroup);
-		//		group.Name = tb.Text;
-		//		group.Changing = false;
-		//		((MainWindow)System.Windows.Application.Current.MainWindow).MGroup = group;
-		//		((MainWindow)System.Windows.Application.Current.MainWindow).GroupsListView.Items.Refresh();
-		//	}
-		//}
+		public EditCellTemplateSelector(string bstring)
+		{
+			this.bindString = bstring;
+		}
+		public EditCellTemplateSelector()
+		{
+			this.bindString = "Name";
+		}
 	}
 }

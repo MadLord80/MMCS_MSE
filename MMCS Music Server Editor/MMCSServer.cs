@@ -129,21 +129,9 @@ namespace MMCS_MSE
 		private byte[] name_bytes = new byte[128];
 		private List<MSList> lists = new List<MSList>();
 		private List<MSDisc> discs = new List<MSDisc>();
-
-		private bool changing = false;
         
         public event PropertyChangedEventHandler PropertyChanged;
-
-		public bool Changing
-		{
-			get { return this.changing; }
-			set
-			{
-				this.changing = value;
-				//OnPropertyChanged("Changed");
-			}
-		}
-
+		
         public int Id
         {
             get { return this.id; }
@@ -344,20 +332,8 @@ namespace MMCS_MSE
 		private List<MSTrack> tracks = new List<MSTrack>();
 		private string errors = "";
 
-		private bool changing = false;
-
 		public event PropertyChangedEventHandler PropertyChanged;
-
-		public bool Changing
-		{
-			get { return this.changing; }
-			set
-			{
-				this.changing = value;
-				//OnPropertyChanged("Changed");
-			}
-		}
-
+		
 		public ElenmentId Id
 		{
 			get { return this.id; }
