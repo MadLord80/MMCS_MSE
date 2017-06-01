@@ -107,7 +107,7 @@ namespace MMCS_MSE
 		public string get_SCpath(ElenmentId disc, int track_id)
 		{
 			string disc_id = String.Format("{0,2:00}", BitConverter.ToString(new byte[1] { (byte)disc.Id }));
-			string track_file = String.Format("{0,3:000}", track_id);
+			string track_file = String.Format("{0,3:000}.sc", track_id);
 			string path = main_dir + DATA_path + DATA_path + disc_id + "\\" + disc.FullId + "\\" + track_file;
 			return path;
 		}

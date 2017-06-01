@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Reflection;
 
 namespace MMCS_MSE
 {
@@ -40,6 +42,12 @@ namespace MMCS_MSE
 		{
 			get { return this.codePage; }
 		}
+		
+		internal bool is_favTrack(MSTrack track)
+		{
+			List<MSList> ls = this.lists.Where(l => l.Songs.Contains(track)).ToList();
+			return (ls.Count > 0) ? true : false;
+		}
 
 		public MainWindow()
         {
@@ -62,9 +70,9 @@ namespace MMCS_MSE
 			addButtonTemplate.Click += new RoutedEventHandler(on_addList);
 			copyButtonTemplate.Click += new RoutedEventHandler(on_copyList);
 
-			//editTrackButton.Click += new RoutedEventHandler(on_editTrack);
-			//delTrackButton.Click += new RoutedEventHandler(on_delTrack);
-			//addTrackButton.Click += new RoutedEventHandler(on_addTrack);
+			editTrackButton.Click += new RoutedEventHandler(on_editTrack);
+			delTrackButton.Click += new RoutedEventHandler(on_delTrack);
+			addTrackButton.Click += new RoutedEventHandler(on_addTrack);
 			copyTrackButton.Click += new RoutedEventHandler(on_copyTrack);
 		}
 
@@ -94,9 +102,9 @@ namespace MMCS_MSE
 		}
 		private void triggerTButtons(bool onoff)
 		{
-			//editTrackButton.IsEnabled = onoff;
-			//delTrackButton.IsEnabled = onoff;
-			//addTrackButton.IsEnabled = onoff;
+			editTrackButton.IsEnabled = onoff;
+			delTrackButton.IsEnabled = onoff;
+			addTrackButton.IsEnabled = onoff;
 			copyTrackButton.IsEnabled = onoff;
 		}
 
@@ -347,7 +355,6 @@ namespace MMCS_MSE
 
 		private void fill_discs_tracks()
 		{
-			//int[] readed_titles = new int[0];
 			foreach (MSDisc disc in discs)
 			{
 				string title_path = mserver.get_TITLEpath(disc.Id);
@@ -357,19 +364,8 @@ namespace MMCS_MSE
 					continue;
 				}
 
-				//if (Array.IndexOf(readed_titles, disc.Id.Id) != -1)
-				//{
-				//	continue;
-				//}
-				//else
-				//{
-				//	Array.Resize(ref readed_titles, readed_titles.Length + 1);
-				//	readed_titles[readed_titles.Length - 1] = disc.Id.Id;
-				//}
-
 				using (FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.Read))
 				{
-					//int[] dtracks_sizes = new int[mserver.max_dtracks];
 					//1 TITLE - n discs
 					int[] dtracks_sizes = new int[disc.Id.Prefix];
 					
@@ -391,14 +387,9 @@ namespace MMCS_MSE
 					byte[] dtracks_data = new byte[dtracks_sizes[disc.Id.Prefix - 1]];
 					fs.Read(dtracks_data, 0, dtracks_data.Length);
 
-					//hf.spliceByteArray(dtracks_data, ref temp, mserver.dtId_offset, 4);
-					//ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
-
 					int songs_count = dtracks_data[mserver.songs_cnt_offset];
 
 					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
-					//byte[] disc_artist = new byte[temp.Length];
-					//temp.CopyTo(disc_artist, 0);
 					disc.Artist = hf.ByteArrayToString(temp, codePage);
 
 					int tracks_desc_offset = mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length;
@@ -419,7 +410,6 @@ namespace MMCS_MSE
 						disc.Tracks.Add(tr);
 					}
 				}
-				//fs.Close();
 			}
 		}
 
@@ -463,6 +453,7 @@ namespace MMCS_MSE
 		{
 			Type itemType = listViewTemplate.SelectedItem.GetType();
 
+			TrackslistView.ItemContainerStyleSelector = new DiscListStyleSelector();
 			if (itemType.Name == "MSDisc")
 			{
 				tracksLabelTemplate.Content = "Tracks (max 99)";
@@ -471,6 +462,7 @@ namespace MMCS_MSE
 				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Favorite", Width = 64, CellTemplateSelector = new FavorCellTemplateSelector() });
 				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
 				TrackslistView.ItemsSource = disc.Tracks;
 				copyTrackButton.ToolTip = "Copy Name-Artist to clipboard";
@@ -646,6 +638,8 @@ namespace MMCS_MSE
 				MSDisc ndisc = new MSDisc(new ElenmentId(newDiscId, 1), newName, newArtist);
 				discs.Add(ndisc);
 				group.Discs.Add(ndisc);
+
+				//TODO: Add disc from directory
 			}
 			listViewTemplate.Items.Refresh();
 			GroupsListView.Items.Refresh();
@@ -680,11 +674,81 @@ namespace MMCS_MSE
 			}
 			else
 			{
-				//Dictionary<MSTrack, MSDisc> ls = (TrackslistView.SelectedItem as Dictionary<MSTrack, MSDisc>);
-				KeyValuePair<MSTrack, MSDisc> ls = (TrackslistView.SelectedItem as KeyValuePair<MSTrack, MSDisc>);
-				string na = (ls.Keys.First().Artist == "") ? ls.Values.First().Id.FullId + ": " + ls.Keys.First().Name : ls.Values.First().Id.FullId + ": " + ls.Keys.First().Name + " - " + ls.Keys.First().Artist;
+				KeyValuePair<MSTrack, MSDisc> ls =  (KeyValuePair<MSTrack, MSDisc>) TrackslistView.SelectedItem;
+				string na = (ls.Key.Artist == "") ? ls.Value.Id.FullId + ": " + ls.Key.Name : ls.Value.Id.FullId + ": " + ls.Key.Name + " - " + ls.Key.Artist;
 				System.Windows.Clipboard.SetText(na);
 			}
+		}
+
+		private void on_addTrack(object sender, RoutedEventArgs args)
+		{
+			if (listViewTemplate.SelectedItem == null) return;
+
+			Type itemType = listViewTemplate.SelectedItem.GetType();
+			//TODO: Add to list!!!
+			if (itemType.Name == "MSList") return;
+			
+			MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
+			int newId = disc.Tracks.Max(t => t.Id) + 1;
+			//TODO: Add track from file
+
+			//byte[] newName = new byte[mserver.dtName_length];
+			//byte[] newArtist = new byte[mserver.dtArtist_length];
+			//Array.ForEach(newName, b => b = 0x00);
+			//Array.ForEach(newArtist, b => b = 0x00);
+			//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New track");
+			//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
+			//Array.Copy(new_name, 0, newName, 0, new_name.Length);
+			//Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
+			//disc.Tracks.Add(new MSTrack(newId, newName, newArtist));
+
+			//listViewTemplate.Items.Refresh();
+			//TrackslistView.Items.Refresh();
+		}
+
+		private void on_delTrack(object sender, RoutedEventArgs args)
+		{
+			if (TrackslistView.SelectedItem == null) return;
+
+			Type itemType = TrackslistView.SelectedItem.GetType();
+			if (itemType.Name == "MSTrack")
+			{
+				MSTrack track = (TrackslistView.SelectedItem as MSTrack);
+				track.Exists = false;
+				TrackslistView.Items.Refresh();
+				//discs.Where(d => d.Tracks.Contains(track)).ToList().ForEach(d => d.Tracks.Remove(track));
+				//lists.Where(l => l.Songs.Contains(track)).ToList().ForEach(l => l.Songs.Remove(track));
+
+				//TODO: del track file
+			}
+			else
+			{
+				if (listViewTemplate.SelectedItem == null) return;
+				KeyValuePair<MSTrack, MSDisc> ls = (KeyValuePair<MSTrack, MSDisc>)TrackslistView.SelectedItem;
+				MSList list = (listViewTemplate.SelectedItem as MSList);
+				list.Songs.Remove(ls.Key as MSTrack);
+				fill_tracks_table();
+			}
+
+			listViewTemplate.Items.Refresh();
+		}
+
+		private void on_editTrack(object sender, RoutedEventArgs args)
+		{
+			if (listViewTemplate.SelectedItem == null) return;
+			TrackslistView.SelectedItem = null;
+			
+			GridView gv = (TrackslistView.View as GridView);
+			
+			gv.Columns[1].DisplayMemberBinding = null;
+			gv.Columns[1].CellTemplateSelector = new EditCellTemplateSelector();
+			gv.Columns[2].DisplayMemberBinding = null;
+			gv.Columns[2].CellTemplateSelector = new EditCellTemplateSelector("Artist");
+
+			//TODO: edit tracks from source
+
+			TrackslistView.Items.Refresh();
+			saveTButton.IsEnabled = true;
 		}
 
 		private void GroupsListView_onclick(object sender, MouseButtonEventArgs e)
@@ -862,6 +926,20 @@ namespace MMCS_MSE
 			triggerLDButtons(ldButtons);
 			triggerTButtons(tButtons);
 		}
+
+		private void saveTButton_Click(object sender, RoutedEventArgs e)
+		{
+			GridView gv = (TrackslistView.View as GridView);
+			if (gv == null || gv.Columns.Count == 0) return;
+
+			gv.Columns[1].DisplayMemberBinding = new System.Windows.Data.Binding("Name");
+			gv.Columns[1].CellTemplateSelector = null;
+			gv.Columns[2].DisplayMemberBinding = new System.Windows.Data.Binding("Artist");
+			gv.Columns[2].CellTemplateSelector = null;
+
+			TrackslistView.Items.Refresh();
+			saveTButton.IsEnabled = false;
+		}
 	}
 
 	public class DiscListStyleSelector : StyleSelector
@@ -877,27 +955,33 @@ namespace MMCS_MSE
 				if (el.Errors == "") return LVitem.Style;
 				LVitem.ToolTip = el.Errors;
 			}
-			else
+			else if (itemType.Name == "MSList")
 			{
 				MSList el = (item as MSList);
 				if (el.Errors == "") return LVitem.Style;
 				LVitem.ToolTip = el.Errors;
+			}
+			else if (itemType.Name == "MSTrack")
+			{
+				MSTrack el = (item as MSTrack);
+				if (el.Exists) return LVitem.Style;
+				LVitem.ToolTip = "Track file deleted!\n";
+			}
+			else
+			{
+				KeyValuePair<MSTrack, MSDisc> el = (KeyValuePair<MSTrack, MSDisc>)item;
+				if (el.Key.Exists) return LVitem.Style;
+				LVitem.ToolTip = "Track file deleted!\n";
 			}
 
 			Style st = new Style(LVitem.Style.TargetType, LVitem.Style);
 			
 			foreach (Setter stb in LVitem.Style.Setters)
 			{
-				if (stb.Property == System.Windows.Controls.ListViewItem.ForegroundProperty)
-				{
-					Setter rrr = new Setter(stb.Property, Brushes.Red, stb.TargetName);
-					st.Setters.Add(rrr);
-				}
-				else
-				{
-					Setter rrr = new Setter(stb.Property, stb.Value, stb.TargetName);
-					st.Setters.Add(rrr);
-				}
+				Setter rrr = (stb.Property == System.Windows.Controls.ListViewItem.ForegroundProperty) 
+					? new Setter(stb.Property, System.Windows.Media.Brushes.Red, stb.TargetName)
+					: new Setter(stb.Property, stb.Value, stb.TargetName);
+				st.Setters.Add(rrr);
 			}
 			return st;			
 		}
@@ -922,11 +1006,6 @@ namespace MMCS_MSE
 					tp = System.Windows.Controls.TextBox.TextProperty;
 				}
 			}
-			else if (itemType.Name == "MSDisc")
-			{
-				tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-				tp = System.Windows.Controls.TextBox.TextProperty;
-			}
 			else if (itemType.Name == "MSList")
 			{
 				MSList list = (item as MSList);
@@ -935,6 +1014,11 @@ namespace MMCS_MSE
 					tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
 					tp = System.Windows.Controls.TextBox.TextProperty;
 				}
+			}
+			else
+			{
+				tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+				tp = System.Windows.Controls.TextBox.TextProperty;
 			}
 
 			tb.SetBinding(tp, new System.Windows.Data.Binding(this.bindString));
@@ -948,6 +1032,46 @@ namespace MMCS_MSE
 		public EditCellTemplateSelector()
 		{
 			this.bindString = "Name";
+		}
+	}
+
+	public class FavorCellTemplateSelector : DataTemplateSelector
+	{
+		public override DataTemplate SelectTemplate(object item, DependencyObject container)
+		{
+			FrameworkElementFactory tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
+			//DependencyProperty tp = System.Windows.Controls.TextBlock.TextProperty;
+			//BitmapImage fav = new BitmapImage();
+			//Image fav = new Image();
+			//fav.Source = "Images/fav.png";
+			//fav.UriSource = new Uri("Images/fav.png");
+			//DataTemplate dtt = new DataTemplate(typeof(BitmapImage));
+			FrameworkElementFactory img = new FrameworkElementFactory(typeof(System.Windows.Controls.Image));
+			//img.s
+			//System.Windows.Data.Binding Sourcebinding = new System.Windows.Data.Binding();
+			//Sourcebinding.Path = new PropertyPath("Source");
+			//System.Windows.Data.Binding binding = new System.Windows.Data.Binding("Images/fav.png");
+			//binding.Converter = new IValueConverter();
+			//img.SetBinding(System.Windows.Controls.Image.SourceProperty, Sourcebinding);
+			string codeBase = Assembly.GetExecutingAssembly().CodeBase;
+			BitmapImage bi3 = new BitmapImage();
+			bi3.BeginInit();
+			bi3.UriSource = new Uri(codeBase + ";../../Images/fav.png");
+			bi3.EndInit();
+			//img.Stretch = Stretch.Fill;
+			img.SetValue(System.Windows.Controls.Image.SourceProperty, bi3);
+			//dtt.VisualTree = img;
+
+			MSTrack track = (item as MSTrack);
+			if (((MainWindow)System.Windows.Application.Current.MainWindow).is_favTrack(track))
+			{
+			//	tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
+			//	tp = System.Windows.Controls.TextBox.TextProperty;
+			}
+
+			//tb.SetBinding(tp, new System.Windows.Data.Binding(this.bindString));
+			//return new DataTemplate { VisualTree = tb };
+			return new DataTemplate { VisualTree = img };
 		}
 	}
 }

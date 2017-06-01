@@ -18,6 +18,9 @@
                 <MenuItem x:Name="iso_codepage" Header="Cyrillic (ISO 8859-5)" HorizontalAlignment="Left" Width="145" IsCheckable="True" Click="codepage_Click" IsChecked="True"/>
                 <MenuItem x:Name="jis_codepage" Header="Shift-JIS" HorizontalAlignment="Left" Width="145" IsCheckable="True" Click="codepage_Click"/>
             </MenuItem>
+            <MenuItem Header="Tools" Height="24" Margin="0" VerticalAlignment="Top">
+                <MenuItem Header="Report" HorizontalAlignment="Left" Width="96"/>
+            </MenuItem>
         </Menu>
         <Label x:Name="label" Content="Groups (max 100)" HorizontalAlignment="Left" Margin="8,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
         <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="8,93,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" MouseUp="GroupsListView_onclick" Background="#FF333333">
@@ -114,5 +117,6 @@
         <Button x:Name="saveGroupsButton" Content="Save" HorizontalAlignment="Left" Margin="315,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveGroupsButton_Click"/>
         <RadioButton x:Name="radioButton_Copy10" Content="donnnn1" HorizontalAlignment="Left" Margin="263,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
         <Button x:Name="saveLDButton" Content="Save" HorizontalAlignment="Left" Margin="749,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveLDButton_Click"/>
+        <Button x:Name="saveTButton" Content="Save" HorizontalAlignment="Left" Margin="1183,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveTButton_Click"/>
     </Grid>
 </Window>
