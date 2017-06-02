@@ -940,6 +940,26 @@ namespace MMCS_MSE
 			TrackslistView.Items.Refresh();
 			saveTButton.IsEnabled = false;
 		}
+
+		private void TrackslistView_MouseUp(object sender, MouseButtonEventArgs e)
+		{
+			DependencyObject dep = (DependencyObject)e.OriginalSource;
+			if (!(dep is System.Windows.Controls.Image)) return;
+
+			System.Windows.Controls.Image img = (dep as System.Windows.Controls.Image);
+			MSTrack track = (img.DataContext as MSTrack);
+			if (is_favTrack(track))
+			{
+				lists.Where(l => l.Id == 1).First().Songs.Remove(track);
+			}
+			else
+			{
+				lists.Where(l => l.Id == 1).First().Songs.Add(track);
+			}
+
+			TrackslistView.SelectedItem = null;
+			TrackslistView.Items.Refresh();
+		}
 	}
 
 	public class DiscListStyleSelector : StyleSelector
@@ -1038,39 +1058,17 @@ namespace MMCS_MSE
 	public class FavorCellTemplateSelector : DataTemplateSelector
 	{
 		public override DataTemplate SelectTemplate(object item, DependencyObject container)
-		{
-			FrameworkElementFactory tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBlock));
-			//DependencyProperty tp = System.Windows.Controls.TextBlock.TextProperty;
-			//BitmapImage fav = new BitmapImage();
-			//Image fav = new Image();
-			//fav.Source = "Images/fav.png";
-			//fav.UriSource = new Uri("Images/fav.png");
-			//DataTemplate dtt = new DataTemplate(typeof(BitmapImage));
+		{			
 			FrameworkElementFactory img = new FrameworkElementFactory(typeof(System.Windows.Controls.Image));
-			//img.s
-			//System.Windows.Data.Binding Sourcebinding = new System.Windows.Data.Binding();
-			//Sourcebinding.Path = new PropertyPath("Source");
-			//System.Windows.Data.Binding binding = new System.Windows.Data.Binding("Images/fav.png");
-			//binding.Converter = new IValueConverter();
-			//img.SetBinding(System.Windows.Controls.Image.SourceProperty, Sourcebinding);
-			string codeBase = Assembly.GetExecutingAssembly().CodeBase;
-			BitmapImage bi3 = new BitmapImage();
-			bi3.BeginInit();
-			bi3.UriSource = new Uri(codeBase + ";../../Images/fav.png");
-			bi3.EndInit();
-			//img.Stretch = Stretch.Fill;
-			img.SetValue(System.Windows.Controls.Image.SourceProperty, bi3);
-			//dtt.VisualTree = img;
 
 			MSTrack track = (item as MSTrack);
-			if (((MainWindow)System.Windows.Application.Current.MainWindow).is_favTrack(track))
-			{
-			//	tb = new FrameworkElementFactory(typeof(System.Windows.Controls.TextBox));
-			//	tp = System.Windows.Controls.TextBox.TextProperty;
-			}
-
-			//tb.SetBinding(tp, new System.Windows.Data.Binding(this.bindString));
-			//return new DataTemplate { VisualTree = tb };
+			string fav_img = (((MainWindow)System.Windows.Application.Current.MainWindow).is_favTrack(track)) ? "fav.png" : "nfav.png";
+			BitmapImage bitmapImage = new BitmapImage(new Uri(@"pack://application:,,,/"
+				+ Assembly.GetExecutingAssembly().GetName().Name
+				+ ";component/"
+				+ "Images/" + fav_img, UriKind.Absolute));
+			img.SetValue(System.Windows.Controls.Image.SourceProperty, bitmapImage);
+			img.SetValue(System.Windows.Controls.Image.WidthProperty, 20d);
 			return new DataTemplate { VisualTree = img };
 		}
 	}
