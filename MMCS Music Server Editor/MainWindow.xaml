@@ -19,7 +19,7 @@
                 <MenuItem x:Name="jis_codepage" Header="Shift-JIS" HorizontalAlignment="Left" Width="145" IsCheckable="True" Click="codepage_Click"/>
             </MenuItem>
             <MenuItem Header="Tools" Height="24" Margin="0" VerticalAlignment="Top">
-                <MenuItem Header="Report" HorizontalAlignment="Left" Width="96"/>
+                <MenuItem x:Name="reportButton" Header="Report" HorizontalAlignment="Left" Width="96" Click="reportButton_Click"/>
             </MenuItem>
         </Menu>
         <Label x:Name="label" Content="Groups (max 100)" HorizontalAlignment="Left" Margin="8,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>

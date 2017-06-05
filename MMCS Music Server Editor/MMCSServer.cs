@@ -33,6 +33,7 @@ namespace MMCS_MSE
 		public int lists_size_offset = 0x24;
 		public int list_size_length = 4;
 		public int alists_offset;
+		public int fav_listId = 1;
 		//first 4 byte in list desc - unknown
 		public int a_unknown_length = 4;
 		public int listId_length = 4;
@@ -49,8 +50,9 @@ namespace MMCS_MSE
 		public int discId_length = 4;
 		public int discName_offset = 12;
 		public int discName_length = 0x80;
-		public int discArtist_length = 0x40;
+		public int discNameLoc_length = 0x40;
 		public int disc_songscnt_length = 4;
+		public int disc_enddesc_length = 16;
 		//TITLE
 		public int max_dtracks = 100;
 		public int dtrack_size_offset = 0x24;
@@ -63,13 +65,18 @@ namespace MMCS_MSE
 		public int dtNameLoc_length = 0x40;
 		public int dtArtist_length = 0x80;
 		public int dtArtistLoc_length = 0x40;
+
+		//for report
+		public byte[] INDEXstart = new byte[4];
+		public byte[] ALBUMstart = new byte[4];
 		
 		public string MainDir
 		{
 			set { this.main_dir = value; }
+			get { return this.main_dir; }
 		}
 
-        public MMCSServer()
+		public MMCSServer()
         {
             //INDEX
             lists_offset = groups_offset + max_groups * group_length;
@@ -230,8 +237,34 @@ namespace MMCS_MSE
 		private byte[] name_bytes = new byte[384];
 		private List<MSTrack> songs = new List<MSTrack>();
 		private string errors = "";
+		//for report
+		private byte[] lstart = new byte[4];
+		private byte lid_cnt = new byte();
+		private byte[] ldelimeter = new byte[4];
+		private byte[] lcode = new byte[4];
 
 		public event PropertyChangedEventHandler PropertyChanged;
+
+		public byte[] LStart
+		{
+			get { return this.lstart; }
+			set { this.lstart = value; }
+		}
+		public byte LId_cnt
+		{
+			get { return this.lid_cnt; }
+			set { this.lid_cnt = value; }
+		}
+		public byte[] LDelim
+		{
+			get { return this.ldelimeter; }
+			set { this.ldelimeter = value; }
+		}
+		public byte[] LCode
+		{
+			get { return this.lcode; }
+			set { this.lcode = value; }
+		}
 
 		public int Id
 		{
@@ -331,8 +364,16 @@ namespace MMCS_MSE
 		private byte[] artistLoc_bytes = new byte[40];
 		private List<MSTrack> tracks = new List<MSTrack>();
 		private string errors = "";
+		//for report
+		private byte[] end_desc = new byte[16];
 
 		public event PropertyChangedEventHandler PropertyChanged;
+
+		public byte[] EndDesc
+		{
+			get { return this.end_desc; }
+			set { this.end_desc = value; }
+		}
 		
 		public ElenmentId Id
 		{
@@ -503,8 +544,16 @@ namespace MMCS_MSE
 		private byte[] artist_bytes = new byte[80];
 		private byte[] artistLoc_bytes = new byte[40];
 		private bool is_exist = true;
+		//for report
+		private byte[] ldelim = new byte[8];
 
 		public event PropertyChangedEventHandler PropertyChanged;
+
+		public byte[] ListDelim
+		{
+			get { return this.ldelim; }
+			set { this.ldelim = value; }
+		}
 
 		public int Id
 		{

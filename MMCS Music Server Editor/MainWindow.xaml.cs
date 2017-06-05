@@ -45,8 +45,8 @@ namespace MMCS_MSE
 		
 		internal bool is_favTrack(MSTrack track)
 		{
-			List<MSList> ls = this.lists.Where(l => l.Songs.Contains(track)).ToList();
-			return (ls.Count > 0) ? true : false;
+			bool is_fav = this.lists.Where(l => l.Id == mserver.fav_listId).First().Songs.Contains(track);
+			return is_fav;
 		}
 
 		public MainWindow()
@@ -160,6 +160,8 @@ namespace MMCS_MSE
 
 			using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.Read))
 			{
+				fs.Read(mserver.INDEXstart, 0, mserver.INDEXstart.Length);
+
 				fs.Position = mserver.cnt_disks_offset;
 				int lists_count = fs.ReadByte();
 
@@ -252,6 +254,8 @@ namespace MMCS_MSE
 
 			using (FileStream fs = new FileStream(album_path, FileMode.Open, FileAccess.Read))
 			{
+				fs.Read(mserver.ALBUMstart, 0, mserver.ALBUMstart.Length);
+
 				int[] lists_sizes = new int[mserver.max_lists];
 
 				fs.Position = mserver.lists_size_offset;
@@ -274,16 +278,33 @@ namespace MMCS_MSE
 					byte[] list_data = new byte[size];
 					fs.Read(list_data, 0, list_data.Length);
 
+					hf.spliceByteArray(list_data, ref temp, 0, mserver.a_unknown_length);
+					byte[] lst = new byte[mserver.a_unknown_length];
+					temp.CopyTo(lst, 0);
+
 					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length, 1);
 					int lid = temp[0];
+					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length, 1);
+					byte lid_cnt = temp[0];
 					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 1, 1);
 					int songs_cnt = temp[0];
-					
+
+					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 4, 4);
+					byte[] ldelim = new byte[4];
+					temp.CopyTo(ldelim, 0);
+					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 8, 4);
+					byte[] lcode = new byte[4];
+					temp.CopyTo(lcode, 0);
+
 					byte[] list_name_bytes = new byte[mserver.listName_length];					
 					hf.spliceByteArray(list_data, ref temp, mserver.listName_offset, mserver.listName_length);
 					temp.CopyTo(list_name_bytes, 0);
 
 					MSList list = new MSList(lid, list_name_bytes);
+					list.LStart = lst;
+					list.LId_cnt = lid_cnt;
+					list.LDelim = ldelim;
+					list.LCode = lcode;
 					
 					string errors = "";
 					for (int i = 0; i < songs_cnt; i++)
@@ -312,6 +333,11 @@ namespace MMCS_MSE
 							errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not uniq!\n";
 							continue;
 						}
+
+						dtracks[0].ListDelim = new byte[8] {
+							temp[8], temp[9], temp[10], temp[11],
+							temp[12], temp[13], temp[14], temp[15],
+						};
 
 						list.Songs.Add(dtracks[0]);
 					}
@@ -346,9 +372,12 @@ namespace MMCS_MSE
 
 					hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset, mserver.discName_length);
 					byte[] disc_name = new byte[temp.Length];
-					temp.CopyTo(disc_name, 0);					
+					temp.CopyTo(disc_name, 0);
 
-					discs.Add(new MSDisc(disc_id, disc_name));
+					hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset + mserver.discName_length + mserver.discNameLoc_length + mserver.discId_length, mserver.disc_enddesc_length);
+					MSDisc disc = new MSDisc(disc_id, disc_name);
+					temp.CopyTo(disc.EndDesc, 0);
+					discs.Add(disc);
 				}
 			}
 		}
@@ -628,7 +657,7 @@ namespace MMCS_MSE
 				newDiscId++;
 
 				byte[] newName = new byte[mserver.discName_length];
-				byte[] newArtist = new byte[mserver.discArtist_length];
+				byte[] newArtist = new byte[mserver.dtArtist_length];
 				Array.ForEach(newName, b => b = 0x00);
 				Array.ForEach(newArtist, b => b = 0x00);
 				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New disc");
@@ -950,15 +979,73 @@ namespace MMCS_MSE
 			MSTrack track = (img.DataContext as MSTrack);
 			if (is_favTrack(track))
 			{
-				lists.Where(l => l.Id == 1).First().Songs.Remove(track);
+				lists.Where(l => l.Id == mserver.fav_listId).First().Songs.Remove(track);
 			}
 			else
 			{
-				lists.Where(l => l.Id == 1).First().Songs.Add(track);
+				lists.Where(l => l.Id == mserver.fav_listId).First().Songs.Add(track);
 			}
 
 			TrackslistView.SelectedItem = null;
 			TrackslistView.Items.Refresh();
+		}
+
+		private void reportButton_Click(object sender, RoutedEventArgs e)
+		{
+			string file = System.IO.Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath) + "\\" + "Report.txt";
+			using (FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write))
+			{
+				string SCPTD = "AVSCPlayTrackData.dat: ";
+				SCPTD += (File.Exists(mserver.MainDir + "\\AVSCPlayTrackData.dat")) ? "exist\n" : "not exist\n";
+				byte[] str = hf.StringToByteArray(SCPTD, codePage);
+				fs.Write(str, 0, str.Length);
+
+				string INDEXst = "INDEX start (w\\o discs id): ";
+				uint ist = BitConverter.ToUInt32(mserver.INDEXstart, 0);
+				string discsEnd = "";
+				foreach (MSDisc disc in discs.OrderBy(d => d.Tracks.Count))
+				{
+					byte[] did = new byte[4] { 0x03, 0x00, 0x00, BitConverter.GetBytes(disc.Id.Id)[0] };
+					uint idid = BitConverter.ToUInt32(did, 0);
+					ist -= idid;
+
+					discsEnd += disc.Id.FullId + ": " + disc.Tracks.Count + " : " + BitConverter.ToString(disc.EndDesc) + "\n";
+				}
+				byte[] bist = BitConverter.GetBytes(ist);
+				INDEXst += BitConverter.ToString(bist) + "\n";
+				str = hf.StringToByteArray(INDEXst, codePage);
+				fs.Write(str, 0, str.Length);
+
+				str = hf.StringToByteArray("ORG_ARRAY discs ends:\n", codePage);
+				fs.Write(str, 0, str.Length);
+				str = hf.StringToByteArray(discsEnd, codePage);
+				fs.Write(str, 0, str.Length);
+
+				string ALBUMst = "ALBUM start: " + BitConverter.ToString(mserver.ALBUMstart) + "\n";
+				str = hf.StringToByteArray(ALBUMst, codePage);
+				fs.Write(str, 0, str.Length);
+
+				string ldata = "";
+				foreach (MSList list in lists)
+				{
+					ldata += list.Id + " (" + list.Songs.Count + "): "
+						+ BitConverter.ToString(list.LStart) + " : "
+						+ BitConverter.ToString(new byte[1] { list.LId_cnt }) + " : "
+						+ BitConverter.ToString(list.LDelim) + " : "
+						+ BitConverter.ToString(list.LCode) + "\n";
+					
+					foreach (MSTrack track in list.Songs)
+					{
+						MSDisc disc = discs.Where(d => d.Tracks.Contains(track)).First();
+						ldata += disc.Id.FullId + "(" + track.Id + "): " + BitConverter.ToString(track.ListDelim) + "\n";
+					}
+				}
+				string listsData = "ALBUM0000001.lst data:\n" + ldata;
+				str = hf.StringToByteArray(listsData, codePage);
+				fs.Write(str, 0, str.Length);
+
+				System.Windows.MessageBox.Show("File " + fs.Name + " saved!");
+			}
 		}
 	}
 

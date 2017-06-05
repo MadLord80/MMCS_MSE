@@ -23,6 +23,15 @@ namespace MMCS_MSE
             return outstr;
         }
 
+		public byte[] StringToByteArray(string str, string code_page)
+		{
+			byte[] outarr = new byte[str.Length];
+			Encoding encode = Encoding.GetEncoding(code_page);
+			byte[] chars = encode.GetBytes(str);
+			Array.Copy(chars, 0, outarr, 0, str.Length);
+			return outarr;
+		}
+
 		public byte[] StringToByteArray(string str, int length)
         {
             byte[] outarr = new byte[length];
