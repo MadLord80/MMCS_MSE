@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;
 using System.ComponentModel;
 
 namespace MMCS_MSE
@@ -366,6 +365,8 @@ namespace MMCS_MSE
 		private string errors = "";
 		//for report
 		private byte[] end_desc = new byte[16];
+		private byte[] st_title = new byte[4];
+		private byte[] title = new byte[16];
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -373,6 +374,16 @@ namespace MMCS_MSE
 		{
 			get { return this.end_desc; }
 			set { this.end_desc = value; }
+		}
+		public byte[] StartTitle
+		{
+			get { return this.st_title; }
+			set { this.st_title = value; }
+		}
+		public byte[] Title
+		{
+			get { return this.title; }
+			set { this.title = value; }
 		}
 		
 		public ElenmentId Id

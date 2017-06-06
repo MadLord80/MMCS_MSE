@@ -1,19 +1,11 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Forms;
 using System.IO;
 using System.Collections.ObjectModel;
@@ -22,10 +14,10 @@ using System.Reflection;
 
 namespace MMCS_MSE
 {
-    /// <summary>
-    /// Логика взаимодействия для MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window
+	/// <summary>
+	/// Логика взаимодействия для MainWindow.xaml
+	/// </summary>
+	public partial class MainWindow : Window
     {
         private FolderBrowserDialog opendir = new FolderBrowserDialog();
 		private byte[] temp = new byte[0];
@@ -63,7 +55,7 @@ namespace MMCS_MSE
 			((INotifyCollectionChanged)listViewTemplate.Items).CollectionChanged += ListView_CollectionChanged;
 			((INotifyCollectionChanged)TrackslistView.Items).CollectionChanged += ListView_CollectionChanged;
 
-			//hideButtons(true);
+			hideButtons(true);
 
 			editButtonTemplate.Click += new RoutedEventHandler(on_editList);
 			delButtonTemplate.Click += new RoutedEventHandler(on_delList);
@@ -395,6 +387,9 @@ namespace MMCS_MSE
 
 				using (FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.Read))
 				{
+					fs.Read(disc.StartTitle, 0, disc.StartTitle.Length);
+					int st = BitConverter.ToInt32(disc.StartTitle, 0);
+
 					//1 TITLE - n discs
 					int[] dtracks_sizes = new int[disc.Id.Prefix];
 					
@@ -404,7 +399,9 @@ namespace MMCS_MSE
 						byte[] dtrack_size = new byte[mserver.dtrack_size_length];
 						fs.Read(dtrack_size, 0, dtrack_size.Length);
 						dtracks_sizes[i] = BitConverter.ToInt32(dtrack_size, 0);
+						st -= dtracks_sizes[i];
 					}
+					disc.StartTitle = BitConverter.GetBytes(st);
 
 					int discPrefixTracks_offset = mserver.dtracks_offset;
 					for (int i = 0; i < disc.Id.Prefix - 1; i++)
@@ -417,6 +414,9 @@ namespace MMCS_MSE
 					fs.Read(dtracks_data, 0, dtracks_data.Length);
 
 					int songs_count = dtracks_data[mserver.songs_cnt_offset];
+
+					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset - 16, 16);
+					temp.CopyTo(disc.Title, 0);
 
 					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
 					disc.Artist = hf.ByteArrayToString(temp, codePage);
@@ -992,6 +992,8 @@ namespace MMCS_MSE
 
 		private void reportButton_Click(object sender, RoutedEventArgs e)
 		{
+			if (groups.Count == 0) return;
+
 			string file = System.IO.Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath) + "\\" + "Report.txt";
 			using (FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write))
 			{
@@ -1002,7 +1004,9 @@ namespace MMCS_MSE
 
 				string INDEXst = "INDEX start (w\\o discs id): ";
 				uint ist = BitConverter.ToUInt32(mserver.INDEXstart, 0);
-				string discsEnd = "";
+				string discsEnd = ""; string titleStart = "";
+				string discstitle = "";
+				List<int> discIds = new List<int>();
 				foreach (MSDisc disc in discs.OrderBy(d => d.Tracks.Count))
 				{
 					byte[] did = new byte[4] { 0x03, 0x00, 0x00, BitConverter.GetBytes(disc.Id.Id)[0] };
@@ -1010,15 +1014,24 @@ namespace MMCS_MSE
 					ist -= idid;
 
 					discsEnd += disc.Id.FullId + ": " + disc.Tracks.Count + " : " + BitConverter.ToString(disc.EndDesc) + "\n";
+					discstitle += disc.Id.FullId + ": " + disc.Tracks.Count + " : " + BitConverter.ToString(disc.Title) + "\n";
+
+					if (discIds.Contains(disc.Id.Id)) continue;
+					titleStart += disc.Id.Id + ": " + BitConverter.ToString(disc.StartTitle) + "\n";
+					discIds.Add(disc.Id.Id);
 				}
 				byte[] bist = BitConverter.GetBytes(ist);
 				INDEXst += BitConverter.ToString(bist) + "\n";
 				str = hf.StringToByteArray(INDEXst, codePage);
 				fs.Write(str, 0, str.Length);
 
-				str = hf.StringToByteArray("ORG_ARRAY discs ends:\n", codePage);
+				str = hf.StringToByteArray("ORG_ARRAY discs ends:\n" + discsEnd, codePage);
 				fs.Write(str, 0, str.Length);
-				str = hf.StringToByteArray(discsEnd, codePage);
+
+				str = hf.StringToByteArray("TITLE disc data:\n" + discstitle, codePage);
+				fs.Write(str, 0, str.Length);
+
+				str = hf.StringToByteArray("TITLE starts (w\\o size of track desc):\n" + titleStart, codePage);
 				fs.Write(str, 0, str.Length);
 
 				string ALBUMst = "ALBUM start: " + BitConverter.ToString(mserver.ALBUMstart) + "\n";
