@@ -118,5 +118,6 @@
         <RadioButton x:Name="radioButton_Copy10" Content="donnnn1" HorizontalAlignment="Left" Margin="263,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
         <Button x:Name="saveLDButton" Content="Save" HorizontalAlignment="Left" Margin="749,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveLDButton_Click"/>
         <Button x:Name="saveTButton" Content="Save" HorizontalAlignment="Left" Margin="1183,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveTButton_Click"/>
+        <Button x:Name="saveFButton" Content="Update files" HorizontalAlignment="Left" Margin="1183,440,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveFButton_Click"/>
     </Grid>
 </Window>

@@ -135,8 +135,27 @@ namespace MMCS_MSE
 		private byte[] name_bytes = new byte[128];
 		private List<MSList> lists = new List<MSList>();
 		private List<MSDisc> discs = new List<MSDisc>();
-        
-        public event PropertyChangedEventHandler PropertyChanged;
+		private bool name_changed = false;
+		private bool added = false;
+		private bool deleted = false;
+
+		public event PropertyChangedEventHandler PropertyChanged;
+
+		public bool NameChanged
+		{
+			get { return this.name_changed; }
+			set { this.name_changed = value; }
+		}
+		public bool Added
+		{
+			get { return this.added; }
+			set { this.added = value; }
+		}
+		public bool Deleted
+		{
+			get { return this.deleted; }
+			set { this.deleted = value; }
+		}
 		
         public int Id
         {
@@ -167,13 +186,20 @@ namespace MMCS_MSE
 			}
 			set
 			{
+				if (this.Name == value) return;
+
 				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
 				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
 				if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
 				this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
 				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
+				this.name_changed = true;
 				OnPropertyChanged("Name");
 			}
+		}
+		public byte[] NameBytes
+		{
+			get { return this.name_bytes; }
 		}
 		public List<MSList> Lists
 		{
@@ -194,7 +220,7 @@ namespace MMCS_MSE
 		public MSGroup(int gid, byte[] gnbytes)
 		{
 			this.id = gid;
-			this.name_bytes = gnbytes;
+			this.name_bytes = gnbytes;			
 		}
 		public MSGroup(int gid, byte[] gnbytes, List<MSList> glists)
 		{
@@ -236,6 +262,7 @@ namespace MMCS_MSE
 		private byte[] name_bytes = new byte[384];
 		private List<MSTrack> songs = new List<MSTrack>();
 		private string errors = "";
+		private bool changed = false;
 		//for report
 		private byte[] lstart = new byte[4];
 		private byte lid_cnt = new byte();
@@ -243,6 +270,12 @@ namespace MMCS_MSE
 		private byte[] lcode = new byte[4];
 
 		public event PropertyChangedEventHandler PropertyChanged;
+
+		public bool Changed
+		{
+			get { return this.changed; }
+			set { this.changed = value; }
+		}
 
 		public byte[] LStart
 		{
@@ -363,12 +396,19 @@ namespace MMCS_MSE
 		private byte[] artistLoc_bytes = new byte[40];
 		private List<MSTrack> tracks = new List<MSTrack>();
 		private string errors = "";
+		private bool changed = false;
 		//for report
 		private byte[] end_desc = new byte[16];
 		private byte[] st_title = new byte[4];
 		private byte[] title = new byte[16];
 
 		public event PropertyChangedEventHandler PropertyChanged;
+
+		public bool Changed
+		{
+			get { return this.changed; }
+			set { this.changed = value; }
+		}
 
 		public byte[] EndDesc
 		{
@@ -555,10 +595,17 @@ namespace MMCS_MSE
 		private byte[] artist_bytes = new byte[80];
 		private byte[] artistLoc_bytes = new byte[40];
 		private bool is_exist = true;
+		private bool changed = false;
 		//for report
 		private byte[] ldelim = new byte[8];
 
 		public event PropertyChangedEventHandler PropertyChanged;
+
+		public bool Changed
+		{
+			get { return this.changed; }
+			set { this.changed = value; }
+		}
 
 		public byte[] ListDelim
 		{

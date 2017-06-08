@@ -50,12 +50,15 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 273, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Items", Width = 50, DisplayMemberBinding = new System.Windows.Data.Binding("Items") });
 			GroupsListView.View = lview;
+			GroupsListView.ItemContainerStyleSelector = new LVStyleSelector();
 			GroupsListView.ItemsSource = groups;
+			System.Windows.Data.CollectionView view = (System.Windows.Data.CollectionView)System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource);
+			view.Filter = hiddenItems;
 
 			((INotifyCollectionChanged)listViewTemplate.Items).CollectionChanged += ListView_CollectionChanged;
 			((INotifyCollectionChanged)TrackslistView.Items).CollectionChanged += ListView_CollectionChanged;
 
-			hideButtons(true);
+			//hideButtons(true);
 
 			editButtonTemplate.Click += new RoutedEventHandler(on_editList);
 			delButtonTemplate.Click += new RoutedEventHandler(on_delList);
@@ -447,7 +450,7 @@ namespace MMCS_MSE
 			clearLDTTables();
 			tableLableTemplate.Content = "Lists (max 100)";
 
-			listViewTemplate.ItemContainerStyleSelector = new DiscListStyleSelector();
+			listViewTemplate.ItemContainerStyleSelector = new LVStyleSelector();
 
 			GridView lview = new GridView();
 			listViewTemplate.View = lview;
@@ -465,7 +468,7 @@ namespace MMCS_MSE
 			clearLDTTables();
 			tableLableTemplate.Content = "Discs";
 			
-			listViewTemplate.ItemContainerStyleSelector = new DiscListStyleSelector();
+			listViewTemplate.ItemContainerStyleSelector = new LVStyleSelector();
 
 			GridView lview = new GridView();
 			listViewTemplate.View = lview;
@@ -482,7 +485,7 @@ namespace MMCS_MSE
 		{
 			Type itemType = listViewTemplate.SelectedItem.GetType();
 
-			TrackslistView.ItemContainerStyleSelector = new DiscListStyleSelector();
+			TrackslistView.ItemContainerStyleSelector = new LVStyleSelector();
 			if (itemType.Name == "MSDisc")
 			{
 				tracksLabelTemplate.Content = "Tracks (max 99)";
@@ -876,7 +879,11 @@ namespace MMCS_MSE
 			Array.ForEach(newName, b => b = 0x00);
 			byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New group");
 			Array.Copy(new_name, 0, newName, 0, new_name.Length);
-			groups.Add(new MSGroup(newId, newName));
+			MSGroup ngroup = new MSGroup(newId, newName);
+			ngroup.Added = true;
+			groups.Add(ngroup);
+
+			saveFButton.IsEnabled = true;
 		}
 
 		private void delGroupButton_Click(object sender, RoutedEventArgs e)
@@ -884,7 +891,10 @@ namespace MMCS_MSE
 			if (GroupsListView.SelectedItem == null) return;
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			if (group.Id < 2) return;
-			groups.Remove(group);
+			group.Deleted = true;
+			System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource).Refresh();
+
+			saveFButton.IsEnabled = true;
 		}
 
 		private void listViewTemplate_onclick(object sender, MouseButtonEventArgs e)
@@ -921,6 +931,14 @@ namespace MMCS_MSE
 			}
 		}
 
+		private void ListView_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+		{
+			bool tButtons = (listViewTemplate.SelectedItem == null) ? false : true;
+			bool ldButtons = (GroupsListView.SelectedItem == null) ? false : true;
+			triggerLDButtons(ldButtons);
+			triggerTButtons(tButtons);
+		}
+
 		private void saveGroupsButton_Click(object sender, RoutedEventArgs e)
 		{
 			GridView gv = (GroupsListView.View as GridView);
@@ -929,6 +947,7 @@ namespace MMCS_MSE
 
 			GroupsListView.Items.Refresh();
 			saveGroupsButton.IsEnabled = false;
+			if (groups.Where(g => g.NameChanged == true).ToList().Count > 0) saveFButton.IsEnabled = true;
 		}
 
 		private void saveLDButton_Click(object sender, RoutedEventArgs e)
@@ -946,14 +965,6 @@ namespace MMCS_MSE
 
 			listViewTemplate.Items.Refresh();
 			saveLDButton.IsEnabled = false;
-		}
-		
-		private void ListView_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-		{
-			bool tButtons = (listViewTemplate.SelectedItem == null) ? false : true;
-			bool ldButtons = (GroupsListView.SelectedItem == null) ? false : true;
-			triggerLDButtons(ldButtons);
-			triggerTButtons(tButtons);
 		}
 
 		private void saveTButton_Click(object sender, RoutedEventArgs e)
@@ -1060,13 +1071,73 @@ namespace MMCS_MSE
 				System.Windows.MessageBox.Show("File " + fs.Name + " saved!");
 			}
 		}
+		
+		private bool hiddenItems(object item)
+		{
+			Type itemType = item.GetType();
+			bool show_item = true;
+			if (itemType.Name == "MSGroup")
+			{
+				if ((item as MSGroup).Deleted) show_item = false;
+			}
+			return show_item;
+		}
+
+		private void saveFButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (groups.Where(g => g.NameChanged).ToList().Count > 0)
+			{
+				change_GroupNames();
+			}
+
+			saveFButton.IsEnabled = false;
+			System.Windows.MessageBox.Show("Music Server files updated!");
+			initServer(mserver.MainDir);
+		}
+
+		private void change_GroupNames()
+		{
+			string info_path = mserver.get_INDEXpath();
+			if (!File.Exists(info_path))
+			{
+				System.Windows.MessageBox.Show(info_path + " not found!");
+				return;
+			}
+
+			using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
+			{
+				foreach (MSGroup group in groups)
+				{
+					if (group.Added || group.Deleted || !group.NameChanged) continue;
+
+					fs.Position = mserver.groups_offset;
+					byte[] group_desc = new byte[mserver.group_length];
+					for (int i = 1; i <= mserver.max_groups; i++)
+					{
+						fs.Read(group_desc, 0, group_desc.Length);
+						hf.spliceByteArray(group_desc, ref temp, 0, 4);
+						if (BitConverter.ToInt32(temp, 0) == 0x010000ff) break;
+
+						if (temp[0] == group.Id)
+						{
+							fs.Position -= mserver.groupName_length;
+							fs.Write(group.NameBytes, 0, group.NameBytes.Length);
+						}
+					}
+				}
+			}
+		}
 	}
 
-	public class DiscListStyleSelector : StyleSelector
+	public class LVStyleSelector : StyleSelector
 	{
 		public override Style SelectStyle(object item, DependencyObject container)
 		{
 			System.Windows.Controls.ListViewItem LVitem = (container as System.Windows.Controls.ListViewItem);
+
+			System.Windows.Media.SolidColorBrush brush = System.Windows.Media.Brushes.Red;
+			System.Windows.Media.SolidColorBrush green_brush = System.Windows.Media.Brushes.GreenYellow;
+			System.Windows.Media.SolidColorBrush yellow_brush = System.Windows.Media.Brushes.Yellow;
 
 			Type itemType = item.GetType();
 			if (itemType.Name == "MSDisc")
@@ -1087,6 +1158,24 @@ namespace MMCS_MSE
 				if (el.Exists) return LVitem.Style;
 				LVitem.ToolTip = "Track file deleted!\n";
 			}
+			else if (itemType.Name == "MSGroup")
+			{
+				MSGroup el = (item as MSGroup);
+				if (el.Added)
+				{
+					LVitem.ToolTip = "Group added!";
+					brush = yellow_brush;
+				}
+				else if (el.NameChanged)
+				{
+					LVitem.ToolTip = "Group name changed!";
+					brush = green_brush;
+				}
+				else
+				{
+					return LVitem.Style;
+				}
+			}
 			else
 			{
 				KeyValuePair<MSTrack, MSDisc> el = (KeyValuePair<MSTrack, MSDisc>)item;
@@ -1099,7 +1188,7 @@ namespace MMCS_MSE
 			foreach (Setter stb in LVitem.Style.Setters)
 			{
 				Setter rrr = (stb.Property == System.Windows.Controls.ListViewItem.ForegroundProperty) 
-					? new Setter(stb.Property, System.Windows.Media.Brushes.Red, stb.TargetName)
+					? new Setter(stb.Property, brush, stb.TargetName)
 					: new Setter(stb.Property, stb.Value, stb.TargetName);
 				st.Setters.Add(rrr);
 			}
