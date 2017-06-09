@@ -29,6 +29,8 @@ namespace MMCS_MSE
 		private ObservableCollection<MSGroup> groups = new ObservableCollection<MSGroup>();
 		private ObservableCollection<MSList> lists = new ObservableCollection<MSList>();
 		private ObservableCollection<MSDisc> discs = new ObservableCollection<MSDisc>();
+
+		private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
 		
 		internal string CodePage
 		{
@@ -52,8 +54,8 @@ namespace MMCS_MSE
 			GroupsListView.View = lview;
 			GroupsListView.ItemContainerStyleSelector = new LVStyleSelector();
 			GroupsListView.ItemsSource = groups;
-			System.Windows.Data.CollectionView view = (System.Windows.Data.CollectionView)System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource);
-			view.Filter = hiddenItems;
+			System.Windows.Data.CollectionView gview = (System.Windows.Data.CollectionView)System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource);
+			gview.Filter = hiddenItems;
 
 			((INotifyCollectionChanged)listViewTemplate.Items).CollectionChanged += ListView_CollectionChanged;
 			((INotifyCollectionChanged)TrackslistView.Items).CollectionChanged += ListView_CollectionChanged;
@@ -498,6 +500,8 @@ namespace MMCS_MSE
 				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
 				TrackslistView.ItemsSource = disc.Tracks;
 				copyTrackButton.ToolTip = "Copy Name-Artist to clipboard";
+				System.Windows.Data.CollectionView tview = (System.Windows.Data.CollectionView)System.Windows.Data.CollectionViewSource.GetDefaultView(TrackslistView.ItemsSource);
+				tview.Filter = hiddenItems;
 			}
 			else
 			{
@@ -732,7 +736,9 @@ namespace MMCS_MSE
 			//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
 			//Array.Copy(new_name, 0, newName, 0, new_name.Length);
 			//Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
-			//disc.Tracks.Add(new MSTrack(newId, newName, newArtist));
+			//MSTrack track = new MSTrack(newId, newName, newArtist);
+			//track.Added = true;
+			//disc.Tracks.Add(track);
 
 			//listViewTemplate.Items.Refresh();
 			//TrackslistView.Items.Refresh();
@@ -747,6 +753,7 @@ namespace MMCS_MSE
 			{
 				MSTrack track = (TrackslistView.SelectedItem as MSTrack);
 				track.Exists = false;
+				track.Deleted = true;
 				TrackslistView.Items.Refresh();
 				//discs.Where(d => d.Tracks.Contains(track)).ToList().ForEach(d => d.Tracks.Remove(track));
 				//lists.Where(l => l.Songs.Contains(track)).ToList().ForEach(l => l.Songs.Remove(track));
@@ -892,6 +899,10 @@ namespace MMCS_MSE
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			if (group.Id < 2) return;
 			group.Deleted = true;
+			foreach (MSGroup cg in groups)
+			{
+				if (cg.Id > group.Id) cg.Id--;
+			}
 			System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource).Refresh();
 
 			saveFButton.IsEnabled = true;
@@ -979,6 +990,7 @@ namespace MMCS_MSE
 
 			TrackslistView.Items.Refresh();
 			saveTButton.IsEnabled = false;
+			if (discs.Where(d => d.Tracks.Where(t => t.NameChanged).ToList().Count > 0).ToList().Count > 0) saveFButton.IsEnabled = true;
 		}
 
 		private void TrackslistView_MouseUp(object sender, MouseButtonEventArgs e)
@@ -1080,19 +1092,39 @@ namespace MMCS_MSE
 			{
 				if ((item as MSGroup).Deleted) show_item = false;
 			}
+			else if (itemType.Name == "MSTrack")
+			{
+				if ((item as MSTrack).Deleted) show_item = false;
+			}
 			return show_item;
 		}
 
 		private void saveFButton_Click(object sender, RoutedEventArgs e)
 		{
-			if (groups.Where(g => g.NameChanged).ToList().Count > 0)
-			{
-				change_GroupNames();
-			}
+
+
+			//if (groups.Where(g => g.Added).ToList().Count > 0) add_Groups();
+			//if (groups.Where(g => g.Deleted).ToList().Count > 0) del_Groups();
+			//if (groups.Where(g => g.NameChanged).ToList().Count > 0) change_GroupNames();
 
 			saveFButton.IsEnabled = false;
 			System.Windows.MessageBox.Show("Music Server files updated!");
+			fileBackuped.Clear();
 			initServer(mserver.MainDir);
+		}
+
+		private bool makeFilecopy(string file)
+		{
+			if (fileBackuped.ContainsKey(file) && fileBackuped[file]) return true;
+			if (File.Exists(file + ".old"))
+			{
+				MessageBoxResult res = System.Windows.MessageBox.Show("File " + file + ".old exists! Do you want overwrite it?", "Save backup file", MessageBoxButton.YesNo);
+				if (res == MessageBoxResult.No) return false;
+			}
+			File.Copy(file, file + ".old", true);
+			if (!fileBackuped.ContainsKey(file)) fileBackuped.Add(file, true);
+			fileBackuped[file] = true;
+			return true;
 		}
 
 		private void change_GroupNames()
@@ -1104,11 +1136,18 @@ namespace MMCS_MSE
 				return;
 			}
 
+			if (! makeFilecopy(info_path))
+			{
+				System.Windows.MessageBox.Show("File " + info_path + " not backuped! Changes is not done!");
+				return;
+			}
+
 			using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
 			{
 				foreach (MSGroup group in groups)
 				{
 					if (group.Added || group.Deleted || !group.NameChanged) continue;
+					group.NameChanged = false;
 
 					fs.Position = mserver.groups_offset;
 					byte[] group_desc = new byte[mserver.group_length];
@@ -1122,6 +1161,62 @@ namespace MMCS_MSE
 						{
 							fs.Position -= mserver.groupName_length;
 							fs.Write(group.NameBytes, 0, group.NameBytes.Length);
+						}
+					}
+				}
+			}
+		}
+		private void add_Groups()
+		{
+			string info_path = mserver.get_INDEXpath();
+			string album_path = mserver.get_ALBUMpath();
+			if (!File.Exists(info_path) || !File.Exists(album_path))
+			{
+				System.Windows.MessageBox.Show(info_path + " or " + album_path + " not found!");
+				return;
+			}
+
+			if (!makeFilecopy(info_path) || !makeFilecopy(album_path))
+			{
+				System.Windows.MessageBox.Show("File " + info_path + " or " + album_path + " not backuped! Changes is not done!");
+				return;
+			}
+
+			using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
+			{
+				foreach (MSGroup group in groups.OrderBy(g => g.Id))
+				{
+					if (!group.Added || group.Deleted) continue;
+					group.Added = false;
+					
+					fs.Position = mserver.groups_offset;
+					byte[] group_desc = new byte[mserver.group_length];
+					for (int i = 1; i <= mserver.max_groups; i++)
+					{
+						fs.Read(group_desc, 0, group_desc.Length);
+						hf.spliceByteArray(group_desc, ref temp, 0, 4);
+						if (BitConverter.ToInt32(temp, 0) == 0x010000ff)
+						{
+							fs.Position -= mserver.group_length;
+							fs.Write(new byte[4] { (byte)group.Id, 0x00, 0x00, 0x00 }, 0 , 4);
+							fs.Write(group.NameBytes, 0, group.NameBytes.Length);
+							if (group.Lists.Count > 0)
+							{
+								//need increase size of file???
+								fs.Position = fs.Length;
+								foreach (MSList list in group.Lists)
+								{
+									fs.Write(new byte[8] { (byte)list.Id, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, (byte)group.Id }, 0, 8);
+									long cur_offset = fs.Position;
+
+									fs.Position = mserver.cnt_disks_offset;
+									int cur_cnt = fs.ReadByte();
+									fs.Position -= 1;
+									fs.WriteByte((byte)(cur_cnt + 1));
+									fs.Position = cur_offset;
+								}
+							}
+							break;
 						}
 					}
 				}
@@ -1155,8 +1250,21 @@ namespace MMCS_MSE
 			else if (itemType.Name == "MSTrack")
 			{
 				MSTrack el = (item as MSTrack);
-				if (el.Exists) return LVitem.Style;
-				LVitem.ToolTip = "Track file deleted!\n";
+				if (el.Added)
+				{
+					LVitem.ToolTip = "Track added!";
+					brush = yellow_brush;
+				}
+				else if (el.NameChanged)
+				{
+					LVitem.ToolTip = "Track name changed!";
+					brush = green_brush;
+				}
+				else
+				{
+					return LVitem.Style;
+				}
+				//LVitem.ToolTip = "Track file deleted!\n";
 			}
 			else if (itemType.Name == "MSGroup")
 			{

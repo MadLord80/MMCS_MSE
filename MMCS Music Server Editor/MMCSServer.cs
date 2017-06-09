@@ -160,6 +160,7 @@ namespace MMCS_MSE
         public int Id
         {
             get { return this.id; }
+			set { this.id = value; }
         }
         public string Name
 		{
@@ -262,7 +263,6 @@ namespace MMCS_MSE
 		private byte[] name_bytes = new byte[384];
 		private List<MSTrack> songs = new List<MSTrack>();
 		private string errors = "";
-		private bool changed = false;
 		//for report
 		private byte[] lstart = new byte[4];
 		private byte lid_cnt = new byte();
@@ -270,12 +270,6 @@ namespace MMCS_MSE
 		private byte[] lcode = new byte[4];
 
 		public event PropertyChangedEventHandler PropertyChanged;
-
-		public bool Changed
-		{
-			get { return this.changed; }
-			set { this.changed = value; }
-		}
 
 		public byte[] LStart
 		{
@@ -396,20 +390,13 @@ namespace MMCS_MSE
 		private byte[] artistLoc_bytes = new byte[40];
 		private List<MSTrack> tracks = new List<MSTrack>();
 		private string errors = "";
-		private bool changed = false;
 		//for report
 		private byte[] end_desc = new byte[16];
 		private byte[] st_title = new byte[4];
 		private byte[] title = new byte[16];
 
 		public event PropertyChangedEventHandler PropertyChanged;
-
-		public bool Changed
-		{
-			get { return this.changed; }
-			set { this.changed = value; }
-		}
-
+		
 		public byte[] EndDesc
 		{
 			get { return this.end_desc; }
@@ -595,18 +582,30 @@ namespace MMCS_MSE
 		private byte[] artist_bytes = new byte[80];
 		private byte[] artistLoc_bytes = new byte[40];
 		private bool is_exist = true;
-		private bool changed = false;
+		private bool name_changed = false;
+		private bool added = false;
+		private bool deleted = false;
 		//for report
 		private byte[] ldelim = new byte[8];
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public bool Changed
+		public bool NameChanged
 		{
-			get { return this.changed; }
-			set { this.changed = value; }
+			get { return this.name_changed; }
+			set { this.name_changed = value; }
 		}
-
+		public bool Added
+		{
+			get { return this.added; }
+			set { this.added = value; }
+		}
+		public bool Deleted
+		{
+			get { return this.deleted; }
+			set { this.deleted = value; }
+		}
+		
 		public byte[] ListDelim
 		{
 			get { return this.ldelim; }
@@ -633,11 +632,14 @@ namespace MMCS_MSE
 			}
 			set
 			{
+				if (this.Name == value) return;
+
 				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
 				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
 				if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
 				this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
 				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
+				this.name_changed = true;
 				OnPropertyChanged("Name");
 			}
 		}
@@ -653,11 +655,14 @@ namespace MMCS_MSE
 			}
 			set
 			{
+				if (this.Artist == value) return;
+
 				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
 				byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes(value);
 				if (new_artist.Length > this.artist_bytes.Length) Array.Resize(ref new_artist, this.artist_bytes.Length);
 				this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
 				Array.Copy(new_artist, 0, this.artist_bytes, 0, new_artist.Length);
+				this.name_changed = true;
 				OnPropertyChanged("Artist");
 			}
 		}
@@ -673,11 +678,14 @@ namespace MMCS_MSE
 			}
 			set
 			{
+				if (this.NameLoc == value) return;
+
 				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
 				byte[] new_nameLoc = Encoding.GetEncoding(codePage).GetBytes(value);
 				if (new_nameLoc.Length > this.nameLoc_bytes.Length) Array.Resize(ref new_nameLoc, this.nameLoc_bytes.Length);
 				this.nameLoc_bytes = Enumerable.Repeat((byte)0x00, this.nameLoc_bytes.Length).ToArray();
 				Array.Copy(new_nameLoc, 0, this.nameLoc_bytes, 0, new_nameLoc.Length);
+				this.name_changed = true;
 				OnPropertyChanged("NameLoc");
 			}
 		}
@@ -693,11 +701,14 @@ namespace MMCS_MSE
 			}
 			set
 			{
+				if (this.ArtistLoc == value) return;
+
 				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
 				byte[] new_artistLoc = Encoding.GetEncoding(codePage).GetBytes(value);
 				if (new_artistLoc.Length > this.artistLoc_bytes.Length) Array.Resize(ref new_artistLoc, this.artistLoc_bytes.Length);
 				this.artistLoc_bytes = Enumerable.Repeat((byte)0x00, this.artistLoc_bytes.Length).ToArray();
 				Array.Copy(new_artistLoc, 0, this.artistLoc_bytes, 0, new_artistLoc.Length);
+				this.name_changed = true;
 				OnPropertyChanged("ArtistLoc");
 			}
 		}
