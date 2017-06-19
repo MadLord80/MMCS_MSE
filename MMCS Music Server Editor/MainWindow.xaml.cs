@@ -399,6 +399,7 @@ namespace MMCS_MSE
 					int[] dtracks_sizes = new int[disc.Id.Prefix];
 					
 					fs.Position = mserver.dtrack_size_offset;
+					//tracks size maybe 0!
 					for (int i = 0; i < dtracks_sizes.Length; i++)
 					{
 						byte[] dtrack_size = new byte[mserver.dtrack_size_length];
@@ -726,22 +727,30 @@ namespace MMCS_MSE
 			
 			MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
 			int newId = disc.Tracks.Max(t => t.Id) + 1;
+			if (newId > mserver.max_dtracks)
+			{
+				System.Windows.MessageBox.Show("Max tracks per disc: " + mserver.max_dtracks);
+				return;
+			}
 			//TODO: Add track from file
 
-			//byte[] newName = new byte[mserver.dtName_length];
-			//byte[] newArtist = new byte[mserver.dtArtist_length];
-			//Array.ForEach(newName, b => b = 0x00);
-			//Array.ForEach(newArtist, b => b = 0x00);
-			//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New track");
-			//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
-			//Array.Copy(new_name, 0, newName, 0, new_name.Length);
-			//Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
-			//MSTrack track = new MSTrack(newId, newName, newArtist);
-			//track.Added = true;
-			//disc.Tracks.Add(track);
+			byte[] newName = new byte[mserver.dtName_length];
+			byte[] newArtist = new byte[mserver.dtArtist_length];
+			Array.ForEach(newName, b => b = 0x00);
+			Array.ForEach(newArtist, b => b = 0x00);
+			byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New track");
+			byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
+			Array.Copy(new_name, 0, newName, 0, new_name.Length);
+			Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
+			MSTrack track = new MSTrack(newId, newName, newArtist);
+			track.Added = true;
+			disc.Tracks.Add(track);
 
-			//listViewTemplate.Items.Refresh();
+			listViewTemplate.Items.Refresh();
 			//TrackslistView.Items.Refresh();
+			System.Windows.Data.CollectionViewSource.GetDefaultView(TrackslistView.ItemsSource).Refresh();
+
+			saveFButton.IsEnabled = true;
 		}
 
 		private void on_delTrack(object sender, RoutedEventArgs args)
@@ -1101,8 +1110,7 @@ namespace MMCS_MSE
 
 		private void saveFButton_Click(object sender, RoutedEventArgs e)
 		{
-
-
+			if (discs.Where(d => d.Tracks.Where(t => t.Added).ToList().Count > 0).ToList().Count > 0) add_Tracks();
 			//if (groups.Where(g => g.Added).ToList().Count > 0) add_Groups();
 			//if (groups.Where(g => g.Deleted).ToList().Count > 0) del_Groups();
 			//if (groups.Where(g => g.NameChanged).ToList().Count > 0) change_GroupNames();
@@ -1219,6 +1227,55 @@ namespace MMCS_MSE
 							break;
 						}
 					}
+				}
+			}
+		}
+		private void add_Tracks()
+		{
+			foreach (MSDisc disc in discs.Where(d => d.Tracks.Where(t => t.Added).ToList().Count > 0).ToList())
+			{
+				string title_path = mserver.get_TITLEpath(disc.Id);
+				if (!File.Exists(title_path))
+				{
+					disc.Errors = title_path + " not found!";
+					continue;
+				}
+
+				using (FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.Read))
+				{
+					//What if disc in CDDB?
+					//TITLE:
+					//- increase start bytes
+					//- increase tracks length
+					//- increase num of tracks
+					//- add track name and artist
+					//- add NNN.sc
+					//DISCID:
+					//MM0000TTDISCID.lst - not changed if del. If add?
+					//DISCIDMM.lst - not changed if del. If add?
+					//- increase num of tracks
+					//- increase tracks offsets
+					//RECORD: need to change?
+					//ORG_ARRAY - change only end_desc if del. If add?
+
+					//1 TITLE - n discs
+					int[] dtracks_sizes = new int[disc.Id.Prefix];
+
+					fs.Position = mserver.dtrack_size_offset;
+					//tracks size maybe 0!
+					for (int i = 0; i < dtracks_sizes.Length; i++)
+					{
+						byte[] dtrack_size = new byte[mserver.dtrack_size_length];
+						fs.Read(dtrack_size, 0, dtrack_size.Length);
+						dtracks_sizes[i] = BitConverter.ToInt32(dtrack_size, 0);
+					}
+
+					int discPrefixTracks_offset = mserver.dtracks_offset;
+					for (int i = 0; i < disc.Id.Prefix - 1; i++)
+					{
+						discPrefixTracks_offset += dtracks_sizes[i];
+					}
+					fs.Position = discPrefixTracks_offset;
 				}
 			}
 		}
