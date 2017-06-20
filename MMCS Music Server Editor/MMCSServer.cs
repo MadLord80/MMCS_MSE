@@ -643,6 +643,10 @@ namespace MMCS_MSE
 				OnPropertyChanged("Name");
 			}
 		}
+		public byte[] NameBytes
+		{
+			get { return this.name_bytes; }
+		}
 		public string Artist
 		{
 			get
@@ -665,6 +669,10 @@ namespace MMCS_MSE
 				this.name_changed = true;
 				OnPropertyChanged("Artist");
 			}
+		}
+		public byte[] ArtistBytes
+		{
+			get { return this.artist_bytes; }
 		}
 		public string NameLoc
 		{

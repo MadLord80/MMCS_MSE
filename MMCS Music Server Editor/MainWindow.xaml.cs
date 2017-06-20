@@ -727,9 +727,9 @@ namespace MMCS_MSE
 			
 			MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
 			int newId = disc.Tracks.Max(t => t.Id) + 1;
-			if (newId > mserver.max_dtracks)
+			if (newId > mserver.max_dtracks - 1)
 			{
-				System.Windows.MessageBox.Show("Max tracks per disc: " + mserver.max_dtracks);
+				System.Windows.MessageBox.Show("Max tracks per disc: " + (mserver.max_dtracks - 1));
 				return;
 			}
 			//TODO: Add track from file
@@ -1237,18 +1237,20 @@ namespace MMCS_MSE
 				string title_path = mserver.get_TITLEpath(disc.Id);
 				if (!File.Exists(title_path))
 				{
-					disc.Errors = title_path + " not found!";
-					continue;
+					System.Windows.MessageBox.Show(title_path + " not found!");
+					return;
 				}
 
-				using (FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.Read))
+				if (!makeFilecopy(title_path))
+				{
+					System.Windows.MessageBox.Show("File " + title_path + " not backuped! Changes is not done!");
+					return;
+				}
+
+				using (FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.ReadWrite))
 				{
 					//What if disc in CDDB?
 					//TITLE:
-					//- increase start bytes
-					//- increase tracks length
-					//- increase num of tracks
-					//- add track name and artist
 					//- add NNN.sc
 					//DISCID:
 					//MM0000TTDISCID.lst - not changed if del. If add?
@@ -1258,24 +1260,54 @@ namespace MMCS_MSE
 					//RECORD: need to change?
 					//ORG_ARRAY - change only end_desc if del. If add?
 
-					//1 TITLE - n discs
-					int[] dtracks_sizes = new int[disc.Id.Prefix];
-
-					fs.Position = mserver.dtrack_size_offset;
+					List<KeyValuePair<int, byte[]>> dtracks = new List<KeyValuePair<int, byte[]>>();
 					//tracks size maybe 0!
-					for (int i = 0; i < dtracks_sizes.Length; i++)
+					int dtrack_data_offset = mserver.dtracks_offset;
+					for (int i = 0; i < mserver.max_dtracks; i++)
 					{
+						fs.Position = mserver.dtrack_size_offset + i * mserver.dtrack_size_length;
 						byte[] dtrack_size = new byte[mserver.dtrack_size_length];
 						fs.Read(dtrack_size, 0, dtrack_size.Length);
-						dtracks_sizes[i] = BitConverter.ToInt32(dtrack_size, 0);
+						int dts = BitConverter.ToInt32(dtrack_size, 0);
+						byte[] dtrack_data = new byte[dts];
+						fs.Position = dtrack_data_offset;
+						dtrack_data_offset += dts;
+						fs.Read(dtrack_data, 0, dtrack_data.Length);
+						if (i + 1 == disc.Id.Prefix)
+						{
+							foreach (MSTrack track in disc.Tracks.Where(t => t.Added).ToList())
+							{
+								if (track.Deleted) continue;
+								//- increase tracks length
+								dts += 0x180;
+								//- increase sum
+								dtrack_data[0]++;
+								//- increase num of tracks
+								dtrack_data[8]++;
+								//- add track name and artist
+								Array.Resize(ref dtrack_data, dtrack_data.Length + 0x180);
+								Array.Copy(Enumerable.Repeat((byte)0x00, 0x180).ToArray(), 0, dtrack_data, dtrack_data.Length - 0x180, 0x180);
+								Array.Copy(track.NameBytes, 0, dtrack_data, dtrack_data.Length - 0x180, track.NameBytes.Length);
+								Array.Copy(track.ArtistBytes, 0, dtrack_data, dtrack_data.Length - 0x180 + mserver.dtName_length + mserver.dtNameLoc_length, track.ArtistBytes.Length);
+							}
+						}
+						dtracks.Add(new KeyValuePair<int, byte[]> (dts, dtrack_data));
 					}
 
-					int discPrefixTracks_offset = mserver.dtracks_offset;
-					for (int i = 0; i < disc.Id.Prefix - 1; i++)
+					fs.Position = mserver.dtrack_size_offset;
+					int st = BitConverter.ToInt32(disc.StartTitle, 0);
+					foreach (KeyValuePair<int, byte[]> dt_data in dtracks)
 					{
-						discPrefixTracks_offset += dtracks_sizes[i];
+						st += dt_data.Key;
+						fs.Write(BitConverter.GetBytes(dt_data.Key), 0, 4);
 					}
-					fs.Position = discPrefixTracks_offset;
+					foreach (KeyValuePair<int, byte[]> dt_data in dtracks)
+					{
+						fs.Write(dt_data.Value, 0, dt_data.Key);
+					}
+					//- increase start bytes
+					fs.Position = 0;
+					fs.Write(BitConverter.GetBytes(st), 0, 4);
 				}
 			}
 		}
@@ -1307,7 +1339,11 @@ namespace MMCS_MSE
 			else if (itemType.Name == "MSTrack")
 			{
 				MSTrack el = (item as MSTrack);
-				if (el.Added)
+				if (!el.Exists)
+				{
+					LVitem.ToolTip = "Track file not exist!\n";
+				}
+				else if (el.Added)
 				{
 					LVitem.ToolTip = "Track added!";
 					brush = yellow_brush;
@@ -1321,7 +1357,6 @@ namespace MMCS_MSE
 				{
 					return LVitem.Style;
 				}
-				//LVitem.ToolTip = "Track file deleted!\n";
 			}
 			else if (itemType.Name == "MSGroup")
 			{
