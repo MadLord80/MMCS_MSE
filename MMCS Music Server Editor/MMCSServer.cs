@@ -85,6 +85,12 @@ namespace MMCS_MSE
 			dtracks_offset = dtrack_size_offset + max_dtracks * dtrack_size_length;
 		}
 
+		public string get_DATAdirpath()
+		{
+			string path = main_dir + DATA_path;
+			return path;
+		}
+
 		public string get_ALBUMpath()
         {
             string path = main_dir + INFO_path + ALBUM_path + ALBUM_path + defALBUM_ID + "\\ALBUM" + defALBUM_ID + ".lst";

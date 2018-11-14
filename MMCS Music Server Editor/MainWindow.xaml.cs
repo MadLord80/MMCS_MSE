@@ -105,16 +105,16 @@ namespace MMCS_MSE
 			copyTrackButton.IsEnabled = onoff;
 		}
 
-		private void MenuItem_Click(object sender, RoutedEventArgs e)
+		private void OpenAVDirButton_Click(object sender, RoutedEventArgs e)
         {
             if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 string dir_path = opendir.SelectedPath;
-				initServer(dir_path);
+				InitServer(dir_path);
 			}
         }
 
-		private void initServer(string path)
+		private void InitServer(string path)
 		{
 			mserver.MainDir = path;
 			discs.Clear();
@@ -344,8 +344,35 @@ namespace MMCS_MSE
 			}
 		}
 
+		private ElenmentId[] get_disc_dirs()
+		{
+			ElenmentId[] disc_dirs = { };
+			string[] DISCIDs = Directory.GetDirectories(mserver.get_DATAdirpath());
+			string[] dirs = new string[] { };
+			foreach (string discid in DISCIDs) {
+				string[] ddirs = Directory.GetDirectories(discid);
+				int predirslen = dirs.Length;
+				Array.Resize(ref dirs, dirs.Length + ddirs.Length);
+				Array.ConstrainedCopy(ddirs, 0, dirs, predirslen, ddirs.Length);
+			}
+
+			foreach (string dir in dirs)
+			{
+				string name = dir.Split(new string[] { "\\" }, StringSplitOptions.None).Last();
+				Array.Resize(ref disc_dirs, disc_dirs.Length + 1);
+				disc_dirs[disc_dirs.Length - 1] = new ElenmentId(
+					Convert.ToInt32(Convert.ToString(name[0]) + Convert.ToString(name[1])),
+					Convert.ToInt32(Convert.ToString(name[6]) + Convert.ToString(name[7]))
+				);
+			}
+
+			return disc_dirs;
+		}
+
 		private void fill_discs_array()
 		{
+			ElenmentId[] disc_dirs = get_disc_dirs();
+
 			string org_path = mserver.get_ORGpath();
 			if (!File.Exists(org_path))
 			{
@@ -364,16 +391,25 @@ namespace MMCS_MSE
 				for (int i = 0; i < discs_count; i++)
 				{
 					fs.Read(disc_desc, 0, disc_desc.Length);
-					hf.spliceByteArray(disc_desc, ref temp, mserver.discId_offset, mserver.discId_length);
-					ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
+					ElenmentId disc_id = new ElenmentId(disc_desc[mserver.discId_offset + 3], disc_desc[mserver.discId_offset]);
 
-					hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset, mserver.discName_length);
-					byte[] disc_name = new byte[temp.Length];
-					temp.CopyTo(disc_name, 0);
+					byte[] disc_name = new byte[mserver.discName_length];
+					Array.Copy(
+						disc_desc, 
+						mserver.discName_offset, 
+						disc_name, 
+						0, 
+						mserver.discName_length
+					);
 
-					hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset + mserver.discName_length + mserver.discNameLoc_length + mserver.discId_length, mserver.disc_enddesc_length);
 					MSDisc disc = new MSDisc(disc_id, disc_name);
-					temp.CopyTo(disc.EndDesc, 0);
+					Array.Copy(
+						disc_desc,
+						mserver.discName_offset + mserver.discName_length + mserver.discNameLoc_length + mserver.discId_length,
+						disc.EndDesc,
+						0,
+						mserver.disc_enddesc_length
+					);
 					discs.Add(disc);
 				}
 			}
@@ -860,7 +896,7 @@ namespace MMCS_MSE
 					break;
 			}
 
-			initServer(dir);
+			InitServer(dir);
 		}
 		
 		private void copyGroupButton_Click(object sender, RoutedEventArgs e)
@@ -1118,7 +1154,7 @@ namespace MMCS_MSE
 			saveFButton.IsEnabled = false;
 			System.Windows.MessageBox.Show("Music Server files updated!");
 			fileBackuped.Clear();
-			initServer(mserver.MainDir);
+			InitServer(mserver.MainDir);
 		}
 
 		private bool makeFilecopy(string file)

@@ -12,7 +12,7 @@
     <Grid Background="#FF58585D" VerticalAlignment="Top" Height="496">
         <Menu x:Name="menu" Height="24" VerticalAlignment="Top" Width="1388" Background="#FF333333" HorizontalAlignment="Left">
             <MenuItem Header="Open" Padding="6,3">
-                <MenuItem Header="AVUNIT directory" Margin="0" Width="136" Padding="0,3,2,3" Click="MenuItem_Click" HorizontalAlignment="Left"/>
+                <MenuItem x:Name="OpenAVDirButton" Header="AVUNIT directory" Margin="0" Width="136" Padding="0,3,2,3" Click="OpenAVDirButton_Click" HorizontalAlignment="Left"/>
             </MenuItem>
             <MenuItem Header="Code Page" Height="24" Margin="0" VerticalAlignment="Top">
                 <MenuItem x:Name="iso_codepage" Header="Cyrillic (ISO 8859-5)" HorizontalAlignment="Left" Width="145" IsCheckable="True" Click="codepage_Click" IsChecked="True"/>
