@@ -18,25 +18,27 @@ namespace MMCS_MSE
 	/// Логика взаимодействия для MainWindow.xaml
 	/// </summary>
 	public partial class MainWindow : Window
-    {
-        private FolderBrowserDialog opendir = new FolderBrowserDialog();
+	{
+		private FolderBrowserDialog opendir = new FolderBrowserDialog();
 		private byte[] temp = new byte[0];
 
 		private string codePage = "iso-8859-5";
 
-        private help_functions hf = new help_functions();
-        private MMCSServer mserver = new MMCSServer();
+		private help_functions hf = new help_functions();
+		private MMCSServer mserver = new MMCSServer();
 		private ObservableCollection<MSGroup> groups = new ObservableCollection<MSGroup>();
 		private ObservableCollection<MSList> lists = new ObservableCollection<MSList>();
 		private ObservableCollection<MSDisc> discs = new ObservableCollection<MSDisc>();
 
+		private Dictionary<string, List<int>> factTracks = new Dictionary<string, List<int>>();
+
 		private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
-		
+
 		internal string CodePage
 		{
 			get { return this.codePage; }
 		}
-		
+
 		internal bool is_favTrack(MSTrack track)
 		{
 			bool is_fav = this.lists.Where(l => l.Id == mserver.fav_listId).First().Songs.Contains(track);
@@ -44,9 +46,9 @@ namespace MMCS_MSE
 		}
 
 		public MainWindow()
-        {
-            InitializeComponent();
-			
+		{
+			InitializeComponent();
+
 			GridView lview = new GridView();
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 30, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 273, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
@@ -89,7 +91,7 @@ namespace MMCS_MSE
 			radioButton_Copy9.Visibility = vis;
 			radioButton_Copy10.Visibility = vis;
 		}
-		
+
 		private void triggerLDButtons(bool onoff)
 		{
 			editButtonTemplate.IsEnabled = onoff;
@@ -105,22 +107,23 @@ namespace MMCS_MSE
 			copyTrackButton.IsEnabled = onoff;
 		}
 
-		private void OpenAVDirButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                string dir_path = opendir.SelectedPath;
-				InitServer(dir_path);
+		private void MenuItem_Click(object sender, RoutedEventArgs e)
+		{
+			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+			{
+				string dir_path = opendir.SelectedPath;
+				initServer(dir_path);
 			}
-        }
+		}
 
-		private void InitServer(string path)
+		private void initServer(string path)
 		{
 			mserver.MainDir = path;
 			discs.Clear();
 			lists.Clear();
 			groups.Clear();
 
+			fill_fact_tracks();
 			fill_discs_array();
 			fill_discs_tracks();
 			fill_lists_array();
@@ -144,8 +147,28 @@ namespace MMCS_MSE
 			TrackslistView.ItemsSource = null;
 		}
 
+		private void fill_fact_tracks()
+		{
+			string data_path = mserver.get_DATApath();
+			DirectoryInfo[] dirsID = new DirectoryInfo(data_path).GetDirectories();
+			foreach (DirectoryInfo dirID in dirsID)
+			{
+				DirectoryInfo[] trackdirs = dirID.GetDirectories();
+				foreach (DirectoryInfo trackdir in trackdirs)
+				{
+					FileInfo[] tracks = trackdir.GetFiles("*.sc");
+					List<int> tids = new List<int> { };
+					foreach (FileInfo track in tracks)
+					{
+						tids.Add(Convert.ToInt32(track.Name.Substring(0, 3)));
+					}
+					factTracks.Add(trackdir.Name, tids);
+				}
+			}
+		}
+
 		private void fill_groups_table()
-        {
+		{
 			clearLDTTables();
 
 			string info_path = mserver.get_INDEXpath();
@@ -171,12 +194,12 @@ namespace MMCS_MSE
 					if (BitConverter.ToInt32(temp, 0) == 0x010000ff) break;
 
 					int group_id = temp[0];
-					
-					byte[] group_name_bytes = new byte[mserver.groupName_length];
-					hf.spliceByteArray(group_desc, ref temp, mserver.groupName_offset, mserver.groupName_length);
-					temp.CopyTo(group_name_bytes, 0);
 
-					groups.Add(new MSGroup(group_id, group_name_bytes));
+					//byte[] group_name_bytes = new byte[mserver.groupName_length];
+					//hf.spliceByteArray(group_desc, ref temp, mserver.groupName_offset, mserver.groupName_length);
+					//temp.CopyTo(group_name_bytes, 0);
+
+					//groups.Add(new MSGroup(group_id, group_name_bytes));
 				}
 
 				fs.Position = mserver.lists_offset;
@@ -293,7 +316,7 @@ namespace MMCS_MSE
 					byte[] lcode = new byte[4];
 					temp.CopyTo(lcode, 0);
 
-					byte[] list_name_bytes = new byte[mserver.listName_length];					
+					byte[] list_name_bytes = new byte[mserver.listName_length];
 					hf.spliceByteArray(list_data, ref temp, mserver.listName_offset, mserver.listName_length);
 					temp.CopyTo(list_name_bytes, 0);
 
@@ -302,7 +325,7 @@ namespace MMCS_MSE
 					list.LId_cnt = lid_cnt;
 					list.LDelim = ldelim;
 					list.LCode = lcode;
-					
+
 					string errors = "";
 					for (int i = 0; i < songs_cnt; i++)
 					{
@@ -331,10 +354,10 @@ namespace MMCS_MSE
 							continue;
 						}
 
-						dtracks[0].ListDelim = new byte[8] {
-							temp[8], temp[9], temp[10], temp[11],
-							temp[12], temp[13], temp[14], temp[15],
-						};
+						//dtracks[0].ListDelim = new byte[8] {
+						//	temp[8], temp[9], temp[10], temp[11],
+						//	temp[12], temp[13], temp[14], temp[15],
+						//};
 
 						list.Songs.Add(dtracks[0]);
 					}
@@ -344,35 +367,8 @@ namespace MMCS_MSE
 			}
 		}
 
-		private ElenmentId[] get_disc_dirs()
-		{
-			ElenmentId[] disc_dirs = { };
-			string[] DISCIDs = Directory.GetDirectories(mserver.get_DATAdirpath());
-			string[] dirs = new string[] { };
-			foreach (string discid in DISCIDs) {
-				string[] ddirs = Directory.GetDirectories(discid);
-				int predirslen = dirs.Length;
-				Array.Resize(ref dirs, dirs.Length + ddirs.Length);
-				Array.ConstrainedCopy(ddirs, 0, dirs, predirslen, ddirs.Length);
-			}
-
-			foreach (string dir in dirs)
-			{
-				string name = dir.Split(new string[] { "\\" }, StringSplitOptions.None).Last();
-				Array.Resize(ref disc_dirs, disc_dirs.Length + 1);
-				disc_dirs[disc_dirs.Length - 1] = new ElenmentId(
-					Convert.ToInt32(Convert.ToString(name[0]) + Convert.ToString(name[1])),
-					Convert.ToInt32(Convert.ToString(name[6]) + Convert.ToString(name[7]))
-				);
-			}
-
-			return disc_dirs;
-		}
-
 		private void fill_discs_array()
 		{
-			ElenmentId[] disc_dirs = get_disc_dirs();
-
 			string org_path = mserver.get_ORGpath();
 			if (!File.Exists(org_path))
 			{
@@ -386,31 +382,26 @@ namespace MMCS_MSE
 				fs.Position = mserver.discs_cnt_offset;
 				fs.Read(discs_cnt, 0, discs_cnt.Length);
 				int discs_count = BitConverter.ToInt32(discs_cnt, 0);
+				if (fs.Length != mserver.org_header_size + discs_count * mserver.org_discdata_size)
+				{
+					System.Windows.MessageBox.Show("ORG_ARRAY: incorrect data!");
+					return;
+				}
 
 				byte[] disc_desc = new byte[mserver.disc_desc_length];
 				for (int i = 0; i < discs_count; i++)
 				{
 					fs.Read(disc_desc, 0, disc_desc.Length);
-					ElenmentId disc_id = new ElenmentId(disc_desc[mserver.discId_offset + 3], disc_desc[mserver.discId_offset]);
+					hf.spliceByteArray(disc_desc, ref temp, mserver.discId_offset, mserver.discId_length);
+					ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
 
-					byte[] disc_name = new byte[mserver.discName_length];
-					Array.Copy(
-						disc_desc, 
-						mserver.discName_offset, 
-						disc_name, 
-						0, 
-						mserver.discName_length
-					);
+					//hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset, mserver.discName_length);
+					//byte[] disc_name = new byte[temp.Length];
+					//temp.CopyTo(disc_name, 0);
 
-					MSDisc disc = new MSDisc(disc_id, disc_name);
-					Array.Copy(
-						disc_desc,
-						mserver.discName_offset + mserver.discName_length + mserver.discNameLoc_length + mserver.discId_length,
-						disc.EndDesc,
-						0,
-						mserver.disc_enddesc_length
-					);
-					discs.Add(disc);
+					//MSDisc disc = new MSDisc(disc_id, disc_name);
+					//temp.CopyTo(disc.EndDesc, 0);
+					//discs.Add(disc);
 				}
 			}
 		}
@@ -433,7 +424,7 @@ namespace MMCS_MSE
 
 					//1 TITLE - n discs
 					int[] dtracks_sizes = new int[disc.Id.Prefix];
-					
+
 					fs.Position = mserver.dtrack_size_offset;
 					//tracks size maybe 0!
 					for (int i = 0; i < dtracks_sizes.Length; i++)
@@ -460,26 +451,26 @@ namespace MMCS_MSE
 					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset - 16, 16);
 					temp.CopyTo(disc.Title, 0);
 
-					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
-					disc.Artist = hf.ByteArrayToString(temp, codePage);
+					//hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
+					//disc.Artist = hf.ByteArrayToString(temp, codePage);
 
-					int tracks_desc_offset = mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length;
-					for (int i = 0; i < songs_count; i++)
-					{
-						int cur_offset = i * (mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length);
+					//int tracks_desc_offset = mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length;
+					//for (int i = 0; i < songs_count; i++)
+					//{
+					//	int cur_offset = i * (mserver.dtName_length + mserver.dtNameLoc_length + mserver.dtArtist_length + mserver.dtArtistLoc_length);
 
-						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset, mserver.dtName_length);
-						byte[] tname = new byte[temp.Length];
-						temp.CopyTo(tname, 0);
+					//	hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset, mserver.dtName_length);
+					//	byte[] tname = new byte[temp.Length];
+					//	temp.CopyTo(tname, 0);
 
-						hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
-						byte[] tart = new byte[temp.Length];
-						temp.CopyTo(tart, 0);
+					//	hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + tracks_desc_offset + cur_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
+					//	byte[] tart = new byte[temp.Length];
+					//	temp.CopyTo(tart, 0);
 
-						MSTrack tr = new MSTrack(i + 1, tname, tart);
-						if (!File.Exists(mserver.get_SCpath(disc.Id, i + 1))) tr.Exists = false;
-						disc.Tracks.Add(tr);
-					}
+					//	MSTrack tr = new MSTrack(i + 1, tname, tart);
+					//	if (!File.Exists(mserver.get_SCpath(disc.Id, i + 1))) tr.Exists = false;
+					//	disc.Tracks.Add(tr);
+					//}
 				}
 			}
 		}
@@ -497,7 +488,7 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 280, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Songs.Count") });
 			copyButtonTemplate.ToolTip = "Copy Name to clipboard";
-			
+
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			listViewTemplate.ItemsSource = group.Lists;
 		}
@@ -506,7 +497,7 @@ namespace MMCS_MSE
 		{
 			clearLDTTables();
 			tableLableTemplate.Content = "Discs";
-			
+
 			listViewTemplate.ItemContainerStyleSelector = new LVStyleSelector();
 
 			GridView lview = new GridView();
@@ -560,7 +551,7 @@ namespace MMCS_MSE
 				copyTrackButton.ToolTip = "Copy DiscId: Name-Artist to clipboard";
 			}
 		}
-		
+
 		private void on_editList(object sender, RoutedEventArgs args)
 		{
 			if (GroupsListView.SelectedItem == null) return;
@@ -700,17 +691,17 @@ namespace MMCS_MSE
 				}
 				newDiscId++;
 
-				byte[] newName = new byte[mserver.discName_length];
-				byte[] newArtist = new byte[mserver.dtArtist_length];
-				Array.ForEach(newName, b => b = 0x00);
-				Array.ForEach(newArtist, b => b = 0x00);
+				//byte[] newName = new byte[mserver.discName_length];
+				//byte[] newArtist = new byte[mserver.dtArtist_length];
+				//Array.ForEach(newName, b => b = 0x00);
+				//Array.ForEach(newArtist, b => b = 0x00);
 				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New disc");
 				byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
-				Array.Copy(new_name, 0, newName, 0, new_name.Length);
-				Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
-				MSDisc ndisc = new MSDisc(new ElenmentId(newDiscId, 1), newName, newArtist);
-				discs.Add(ndisc);
-				group.Discs.Add(ndisc);
+				//Array.Copy(new_name, 0, newName, 0, new_name.Length);
+				//Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
+				//MSDisc ndisc = new MSDisc(new ElenmentId(newDiscId, 1), newName, newArtist);
+				//discs.Add(ndisc);
+				//group.Discs.Add(ndisc);
 
 				//TODO: Add disc from directory
 			}
@@ -747,7 +738,7 @@ namespace MMCS_MSE
 			}
 			else
 			{
-				KeyValuePair<MSTrack, MSDisc> ls =  (KeyValuePair<MSTrack, MSDisc>) TrackslistView.SelectedItem;
+				KeyValuePair<MSTrack, MSDisc> ls = (KeyValuePair<MSTrack, MSDisc>)TrackslistView.SelectedItem;
 				string na = (ls.Key.Artist == "") ? ls.Value.Id.FullId + ": " + ls.Key.Name : ls.Value.Id.FullId + ": " + ls.Key.Name + " - " + ls.Key.Artist;
 				System.Windows.Clipboard.SetText(na);
 			}
@@ -760,7 +751,7 @@ namespace MMCS_MSE
 			Type itemType = listViewTemplate.SelectedItem.GetType();
 			//TODO: Add to list!!!
 			if (itemType.Name == "MSList") return;
-			
+
 			MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
 			int newId = disc.Tracks.Max(t => t.Id) + 1;
 			if (newId > mserver.max_dtracks - 1)
@@ -770,17 +761,17 @@ namespace MMCS_MSE
 			}
 			//TODO: Add track from file
 
-			byte[] newName = new byte[mserver.dtName_length];
-			byte[] newArtist = new byte[mserver.dtArtist_length];
-			Array.ForEach(newName, b => b = 0x00);
-			Array.ForEach(newArtist, b => b = 0x00);
+			//byte[] newName = new byte[mserver.dtName_length];
+			//byte[] newArtist = new byte[mserver.dtArtist_length];
+			//Array.ForEach(newName, b => b = 0x00);
+			//Array.ForEach(newArtist, b => b = 0x00);
 			byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New track");
 			byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
-			Array.Copy(new_name, 0, newName, 0, new_name.Length);
-			Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
-			MSTrack track = new MSTrack(newId, newName, newArtist);
-			track.Added = true;
-			disc.Tracks.Add(track);
+			//Array.Copy(new_name, 0, newName, 0, new_name.Length);
+			//Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
+			//MSTrack track = new MSTrack(newId, newName, newArtist);
+			//track.Added = true;
+			//disc.Tracks.Add(track);
 
 			listViewTemplate.Items.Refresh();
 			//TrackslistView.Items.Refresh();
@@ -821,9 +812,9 @@ namespace MMCS_MSE
 		{
 			if (listViewTemplate.SelectedItem == null) return;
 			TrackslistView.SelectedItem = null;
-			
+
 			GridView gv = (TrackslistView.View as GridView);
-			
+
 			gv.Columns[1].DisplayMemberBinding = null;
 			gv.Columns[1].CellTemplateSelector = new EditCellTemplateSelector();
 			gv.Columns[2].DisplayMemberBinding = null;
@@ -836,7 +827,7 @@ namespace MMCS_MSE
 		}
 
 		private void GroupsListView_onclick(object sender, MouseButtonEventArgs e)
-        {
+		{
 			if (GroupsListView.SelectedItem == null) return;
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			//Bad condition!!!
@@ -896,9 +887,9 @@ namespace MMCS_MSE
 					break;
 			}
 
-			InitServer(dir);
+			initServer(dir);
 		}
-		
+
 		private void copyGroupButton_Click(object sender, RoutedEventArgs e)
 		{
 			if (GroupsListView.SelectedItem == null) return;
@@ -927,13 +918,13 @@ namespace MMCS_MSE
 			{
 				if (group.Id == newId) newId++;
 			}
-			byte[] newName = new byte[mserver.groupName_length];
-			Array.ForEach(newName, b => b = 0x00);
+			//byte[] newName = new byte[mserver.groupName_length];
+			//Array.ForEach(newName, b => b = 0x00);
 			byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New group");
-			Array.Copy(new_name, 0, newName, 0, new_name.Length);
-			MSGroup ngroup = new MSGroup(newId, newName);
-			ngroup.Added = true;
-			groups.Add(ngroup);
+			//Array.Copy(new_name, 0, newName, 0, new_name.Length);
+			//MSGroup ngroup = new MSGroup(newId, newName);
+			//ngroup.Added = true;
+			//groups.Add(ngroup);
 
 			saveFButton.IsEnabled = true;
 		}
@@ -956,7 +947,7 @@ namespace MMCS_MSE
 		private void listViewTemplate_onclick(object sender, MouseButtonEventArgs e)
 		{
 			if (listViewTemplate.SelectedItem == null) return;
-			
+
 			fill_tracks_table();
 		}
 
@@ -1106,29 +1097,29 @@ namespace MMCS_MSE
 				str = hf.StringToByteArray(ALBUMst, codePage);
 				fs.Write(str, 0, str.Length);
 
-				string ldata = "";
-				foreach (MSList list in lists)
-				{
-					ldata += list.Id + " (" + list.Songs.Count + "): "
-						+ BitConverter.ToString(list.LStart) + " : "
-						+ BitConverter.ToString(new byte[1] { list.LId_cnt }) + " : "
-						+ BitConverter.ToString(list.LDelim) + " : "
-						+ BitConverter.ToString(list.LCode) + "\n";
-					
-					foreach (MSTrack track in list.Songs)
-					{
-						MSDisc disc = discs.Where(d => d.Tracks.Contains(track)).First();
-						ldata += disc.Id.FullId + "(" + track.Id + "): " + BitConverter.ToString(track.ListDelim) + "\n";
-					}
-				}
-				string listsData = "ALBUM0000001.lst data:\n" + ldata;
-				str = hf.StringToByteArray(listsData, codePage);
-				fs.Write(str, 0, str.Length);
+				//string ldata = "";
+				//foreach (MSList list in lists)
+				//{
+				//	ldata += list.Id + " (" + list.Songs.Count + "): "
+				//		+ BitConverter.ToString(list.LStart) + " : "
+				//		+ BitConverter.ToString(new byte[1] { list.LId_cnt }) + " : "
+				//		+ BitConverter.ToString(list.LDelim) + " : "
+				//		+ BitConverter.ToString(list.LCode) + "\n";
+
+				//	foreach (MSTrack track in list.Songs)
+				//	{
+				//		MSDisc disc = discs.Where(d => d.Tracks.Contains(track)).First();
+				//		ldata += disc.Id.FullId + "(" + track.Id + "): " + BitConverter.ToString(track.ListDelim) + "\n";
+				//	}
+				//}
+				//string listsData = "ALBUM0000001.lst data:\n" + ldata;
+				//str = hf.StringToByteArray(listsData, codePage);
+				//fs.Write(str, 0, str.Length);
 
 				System.Windows.MessageBox.Show("File " + fs.Name + " saved!");
 			}
 		}
-		
+
 		private bool hiddenItems(object item)
 		{
 			Type itemType = item.GetType();
@@ -1154,7 +1145,7 @@ namespace MMCS_MSE
 			saveFButton.IsEnabled = false;
 			System.Windows.MessageBox.Show("Music Server files updated!");
 			fileBackuped.Clear();
-			InitServer(mserver.MainDir);
+			initServer(mserver.MainDir);
 		}
 
 		private bool makeFilecopy(string file)
@@ -1180,7 +1171,7 @@ namespace MMCS_MSE
 				return;
 			}
 
-			if (! makeFilecopy(info_path))
+			if (!makeFilecopy(info_path))
 			{
 				System.Windows.MessageBox.Show("File " + info_path + " not backuped! Changes is not done!");
 				return;
@@ -1203,7 +1194,7 @@ namespace MMCS_MSE
 
 						if (temp[0] == group.Id)
 						{
-							fs.Position -= mserver.groupName_length;
+							//fs.Position -= mserver.groupName_length;
 							fs.Write(group.NameBytes, 0, group.NameBytes.Length);
 						}
 					}
@@ -1232,7 +1223,7 @@ namespace MMCS_MSE
 				{
 					if (!group.Added || group.Deleted) continue;
 					group.Added = false;
-					
+
 					fs.Position = mserver.groups_offset;
 					byte[] group_desc = new byte[mserver.group_length];
 					for (int i = 1; i <= mserver.max_groups; i++)
@@ -1242,7 +1233,7 @@ namespace MMCS_MSE
 						if (BitConverter.ToInt32(temp, 0) == 0x010000ff)
 						{
 							fs.Position -= mserver.group_length;
-							fs.Write(new byte[4] { (byte)group.Id, 0x00, 0x00, 0x00 }, 0 , 4);
+							fs.Write(new byte[4] { (byte)group.Id, 0x00, 0x00, 0x00 }, 0, 4);
 							fs.Write(group.NameBytes, 0, group.NameBytes.Length);
 							if (group.Lists.Count > 0)
 							{
@@ -1268,6 +1259,8 @@ namespace MMCS_MSE
 		}
 		private void add_Tracks()
 		{
+			// just add 00x.sc
+			//
 			foreach (MSDisc disc in discs.Where(d => d.Tracks.Where(t => t.Added).ToList().Count > 0).ToList())
 			{
 				string title_path = mserver.get_TITLEpath(disc.Id);
@@ -1324,10 +1317,10 @@ namespace MMCS_MSE
 								Array.Resize(ref dtrack_data, dtrack_data.Length + 0x180);
 								Array.Copy(Enumerable.Repeat((byte)0x00, 0x180).ToArray(), 0, dtrack_data, dtrack_data.Length - 0x180, 0x180);
 								Array.Copy(track.NameBytes, 0, dtrack_data, dtrack_data.Length - 0x180, track.NameBytes.Length);
-								Array.Copy(track.ArtistBytes, 0, dtrack_data, dtrack_data.Length - 0x180 + mserver.dtName_length + mserver.dtNameLoc_length, track.ArtistBytes.Length);
+								//Array.Copy(track.ArtistBytes, 0, dtrack_data, dtrack_data.Length - 0x180 + mserver.dtName_length + mserver.dtNameLoc_length, track.ArtistBytes.Length);
 							}
 						}
-						dtracks.Add(new KeyValuePair<int, byte[]> (dts, dtrack_data));
+						dtracks.Add(new KeyValuePair<int, byte[]>(dts, dtrack_data));
 					}
 
 					fs.Position = mserver.dtrack_size_offset;
@@ -1346,6 +1339,20 @@ namespace MMCS_MSE
 					fs.Write(BitConverter.GetBytes(st), 0, 4);
 				}
 			}
+		}
+
+		private void TestButton_Click(object sender, RoutedEventArgs e)
+		{
+			//string discId = "2d00000a";
+			//string trackId = "032";
+			//int tid = Convert.ToInt32(trackId);
+			//string tid2 = Convert.ToString(tid);
+			//int dpf = (int)hf.HexStringToByteArray(discId.Substring(0, 2))[0];
+			//int did = (int)hf.HexStringToByteArray(discId.Substring(discId.Length - 2))[0];
+			//string discId2 = 
+			//	BitConverter.ToString(new byte[1] { (byte)did }) 
+			//	+ "0000" 
+			//	+ BitConverter.ToString(new byte[1] { (byte)dpf });
 		}
 	}
 
@@ -1420,15 +1427,15 @@ namespace MMCS_MSE
 			}
 
 			Style st = new Style(LVitem.Style.TargetType, LVitem.Style);
-			
+
 			foreach (Setter stb in LVitem.Style.Setters)
 			{
-				Setter rrr = (stb.Property == System.Windows.Controls.ListViewItem.ForegroundProperty) 
+				Setter rrr = (stb.Property == System.Windows.Controls.ListViewItem.ForegroundProperty)
 					? new Setter(stb.Property, brush, stb.TargetName)
 					: new Setter(stb.Property, stb.Value, stb.TargetName);
 				st.Setters.Add(rrr);
 			}
-			return st;			
+			return st;
 		}
 	}
 
@@ -1483,7 +1490,7 @@ namespace MMCS_MSE
 	public class FavorCellTemplateSelector : DataTemplateSelector
 	{
 		public override DataTemplate SelectTemplate(object item, DependencyObject container)
-		{			
+		{
 			FrameworkElementFactory img = new FrameworkElementFactory(typeof(System.Windows.Controls.Image));
 
 			MSTrack track = (item as MSTrack);
