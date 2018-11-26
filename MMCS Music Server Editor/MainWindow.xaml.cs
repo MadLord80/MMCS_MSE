@@ -30,7 +30,7 @@ namespace MMCS_MSE
 		private ObservableCollection<MSList> lists = new ObservableCollection<MSList>();
 		private ObservableCollection<MSDisc> discs = new ObservableCollection<MSDisc>();
 
-		private Dictionary<string, List<int>> factTracks = new Dictionary<string, List<int>>();
+		private Dictionary<ElenmentId, List<int>> factTracks = new Dictionary<ElenmentId, List<int>>();
 
 		private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
 
@@ -107,7 +107,7 @@ namespace MMCS_MSE
 			copyTrackButton.IsEnabled = onoff;
 		}
 
-		private void MenuItem_Click(object sender, RoutedEventArgs e)
+		private void OpenAVDirButton_Click(object sender, RoutedEventArgs e)
 		{
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
@@ -162,7 +162,7 @@ namespace MMCS_MSE
 					{
 						tids.Add(Convert.ToInt32(track.Name.Substring(0, 3)));
 					}
-					factTracks.Add(trackdir.Name, tids);
+					factTracks.Add(new ElenmentId(trackdir.Name), tids);
 				}
 			}
 		}
@@ -224,21 +224,21 @@ namespace MMCS_MSE
 
 					if (list_data[4] == 0)
 					{
-						ElenmentId disc_id = new ElenmentId(list_data[3], list_data[0]);
-						List<MSDisc> fdiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
-						if (fdiscs.Count == 0)
-						{
-							//error
-							Console.Write("Disc id " + disc_id.FullId + " not found!\n");
-							continue;
-						}
-						else if (fdiscs.Count > 1)
-						{
-							//error
-							Console.Write("Disc id " + disc_id.FullId + " not uniq!\n");
-							continue;
-						}
-						fgroups[0].Discs.Add(fdiscs[0]);
+						//ElenmentId disc_id = new ElenmentId(list_data[3], list_data[0]);
+						//List<MSDisc> fdiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
+						//if (fdiscs.Count == 0)
+						//{
+						//	//error
+						//	Console.Write("Disc id " + disc_id.FullId + " not found!\n");
+						//	continue;
+						//}
+						//else if (fdiscs.Count > 1)
+						//{
+						//	//error
+						//	Console.Write("Disc id " + disc_id.FullId + " not uniq!\n");
+						//	continue;
+						//}
+						//fgroups[0].Discs.Add(fdiscs[0]);
 					}
 					else
 					{
@@ -330,36 +330,36 @@ namespace MMCS_MSE
 					for (int i = 0; i < songs_cnt; i++)
 					{
 						hf.spliceByteArray(list_data, ref temp, mserver.list_desc_length + i * mserver.asong_data_length, mserver.asong_data_length);
-						ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
-						List<MSDisc> ldiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
-						if (ldiscs.Count == 0)
-						{
-							errors += "Disc " + disc_id.FullId + " not found!\n";
-							continue;
-						}
-						else if (ldiscs.Count > 1)
-						{
-							errors += "Disc " + disc_id.FullId + " not uniq!\n";
-							continue;
-						}
-						List<MSTrack> dtracks = ldiscs[0].Tracks.Where(tr => tr.Id == temp[4]).ToList();
-						if (dtracks.Count == 0)
-						{
-							errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not found!\n";
-							continue;
-						}
-						else if (dtracks.Count > 1)
-						{
-							errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not uniq!\n";
-							continue;
-						}
+						//ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
+						//List<MSDisc> ldiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
+						//if (ldiscs.Count == 0)
+						//{
+						//	errors += "Disc " + disc_id.FullId + " not found!\n";
+						//	continue;
+						//}
+						//else if (ldiscs.Count > 1)
+						//{
+						//	errors += "Disc " + disc_id.FullId + " not uniq!\n";
+						//	continue;
+						//}
+						//List<MSTrack> dtracks = ldiscs[0].Tracks.Where(tr => tr.Id == temp[4]).ToList();
+						//if (dtracks.Count == 0)
+						//{
+						//	errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not found!\n";
+						//	continue;
+						//}
+						//else if (dtracks.Count > 1)
+						//{
+						//	errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not uniq!\n";
+						//	continue;
+						//}
 
 						//dtracks[0].ListDelim = new byte[8] {
 						//	temp[8], temp[9], temp[10], temp[11],
 						//	temp[12], temp[13], temp[14], temp[15],
 						//};
 
-						list.Songs.Add(dtracks[0]);
+						//list.Songs.Add(dtracks[0]);
 					}
 					list.Errors = errors;
 					lists.Add(list);
@@ -378,30 +378,30 @@ namespace MMCS_MSE
 
 			using (FileStream fs = new FileStream(org_path, FileMode.Open, FileAccess.Read))
 			{
-				byte[] discs_cnt = new byte[mserver.discs_cnt_length];
-				fs.Position = mserver.discs_cnt_offset;
+				byte[] discs_cnt = new byte[mserver.org_discs_cnt_length];
+				fs.Position = mserver.org_discs_cnt_offset;
 				fs.Read(discs_cnt, 0, discs_cnt.Length);
 				int discs_count = BitConverter.ToInt32(discs_cnt, 0);
+				// check file size
 				if (fs.Length != mserver.org_header_size + discs_count * mserver.org_discdata_size)
 				{
 					System.Windows.MessageBox.Show("ORG_ARRAY: incorrect data!");
 					return;
 				}
 
-				byte[] disc_desc = new byte[mserver.disc_desc_length];
+				byte[] disc_desc = new byte[mserver.org_disc_desc_length];
 				for (int i = 0; i < discs_count; i++)
 				{
 					fs.Read(disc_desc, 0, disc_desc.Length);
-					hf.spliceByteArray(disc_desc, ref temp, mserver.discId_offset, mserver.discId_length);
-					ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
-
-					//hf.spliceByteArray(disc_desc, ref temp, mserver.discName_offset, mserver.discName_length);
-					//byte[] disc_name = new byte[temp.Length];
-					//temp.CopyTo(disc_name, 0);
-
-					//MSDisc disc = new MSDisc(disc_id, disc_name);
-					//temp.CopyTo(disc.EndDesc, 0);
-					//discs.Add(disc);
+					MSDisc disc = new MSDisc(
+						new ArraySegment<byte>(disc_desc, 1, 4).ToArray(),
+						new ArraySegment<byte>(disc_desc, 12, 128).ToArray()
+					);
+					if (factTracks.Keys.Contains(disc.Id))
+					{
+						disc.Exists = true;
+					}
+					discs.Add(disc);
 				}
 			}
 		}
@@ -419,8 +419,8 @@ namespace MMCS_MSE
 
 				using (FileStream fs = new FileStream(title_path, FileMode.Open, FileAccess.Read))
 				{
-					fs.Read(disc.StartTitle, 0, disc.StartTitle.Length);
-					int st = BitConverter.ToInt32(disc.StartTitle, 0);
+					//fs.Read(disc.StartTitle, 0, disc.StartTitle.Length);
+					//int st = BitConverter.ToInt32(disc.StartTitle, 0);
 
 					//1 TITLE - n discs
 					int[] dtracks_sizes = new int[disc.Id.Prefix];
@@ -432,9 +432,9 @@ namespace MMCS_MSE
 						byte[] dtrack_size = new byte[mserver.dtrack_size_length];
 						fs.Read(dtrack_size, 0, dtrack_size.Length);
 						dtracks_sizes[i] = BitConverter.ToInt32(dtrack_size, 0);
-						st -= dtracks_sizes[i];
+						//st -= dtracks_sizes[i];
 					}
-					disc.StartTitle = BitConverter.GetBytes(st);
+					//disc.StartTitle = BitConverter.GetBytes(st);
 
 					int discPrefixTracks_offset = mserver.dtracks_offset;
 					for (int i = 0; i < disc.Id.Prefix - 1; i++)
@@ -448,8 +448,8 @@ namespace MMCS_MSE
 
 					int songs_count = dtracks_data[mserver.songs_cnt_offset];
 
-					hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset - 16, 16);
-					temp.CopyTo(disc.Title, 0);
+					//hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset - 16, 16);
+					//temp.CopyTo(disc.Title, 0);
 
 					//hf.spliceByteArray(dtracks_data, ref temp, mserver.dtName_offset + mserver.dtName_length + mserver.dtNameLoc_length, mserver.dtArtist_length);
 					//disc.Artist = hf.ByteArrayToString(temp, codePage);
@@ -721,8 +721,8 @@ namespace MMCS_MSE
 			else
 			{
 				MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
-				string na = (disc.Artist == "") ? disc.Name : disc.Name + " - " + disc.Artist;
-				System.Windows.Clipboard.SetText(na);
+				//string na = (disc.Artist == "") ? disc.Name : disc.Name + " - " + disc.Artist;
+				//System.Windows.Clipboard.SetText(na);
 			}
 		}
 
@@ -1072,11 +1072,11 @@ namespace MMCS_MSE
 					uint idid = BitConverter.ToUInt32(did, 0);
 					ist -= idid;
 
-					discsEnd += disc.Id.FullId + ": " + disc.Tracks.Count + " : " + BitConverter.ToString(disc.EndDesc) + "\n";
-					discstitle += disc.Id.FullId + ": " + disc.Tracks.Count + " : " + BitConverter.ToString(disc.Title) + "\n";
+					//discsEnd += disc.Id.FullId + ": " + disc.Tracks.Count + " : " + BitConverter.ToString(disc.EndDesc) + "\n";
+					//discstitle += disc.Id.FullId + ": " + disc.Tracks.Count + " : " + BitConverter.ToString(disc.Title) + "\n";
 
 					if (discIds.Contains(disc.Id.Id)) continue;
-					titleStart += disc.Id.Id + ": " + BitConverter.ToString(disc.StartTitle) + "\n";
+					//titleStart += disc.Id.Id + ": " + BitConverter.ToString(disc.StartTitle) + "\n";
 					discIds.Add(disc.Id.Id);
 				}
 				byte[] bist = BitConverter.GetBytes(ist);
@@ -1324,10 +1324,10 @@ namespace MMCS_MSE
 					}
 
 					fs.Position = mserver.dtrack_size_offset;
-					int st = BitConverter.ToInt32(disc.StartTitle, 0);
+					//int st = BitConverter.ToInt32(disc.StartTitle, 0);
 					foreach (KeyValuePair<int, byte[]> dt_data in dtracks)
 					{
-						st += dt_data.Key;
+						//st += dt_data.Key;
 						fs.Write(BitConverter.GetBytes(dt_data.Key), 0, 4);
 					}
 					foreach (KeyValuePair<int, byte[]> dt_data in dtracks)
@@ -1336,7 +1336,7 @@ namespace MMCS_MSE
 					}
 					//- increase start bytes
 					fs.Position = 0;
-					fs.Write(BitConverter.GetBytes(st), 0, 4);
+					//fs.Write(BitConverter.GetBytes(st), 0, 4);
 				}
 			}
 		}
