@@ -24,7 +24,7 @@
             <MenuItem x:Name="testButton" Header="Test" Height="24" Margin="0" VerticalAlignment="Top" Width="100"/>
         </Menu>
         <Label x:Name="label" Content="Groups (max 100)" HorizontalAlignment="Left" Margin="8,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
-        <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="8,93,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" MouseUp="GroupsListView_onclick" Background="#FF333333">
+        <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="8,93,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" Background="#FF333333">
             <ListView.View>
                 <GridView/>
             </ListView.View>

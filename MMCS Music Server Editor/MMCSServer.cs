@@ -23,15 +23,16 @@ namespace MMCS_MSE
 		public readonly int NameDesc_length = 0x80;
 		public readonly int NameLocDesc_length = 0x40;
 		//INDEX
-		public readonly int header_size = 40;
-		public readonly int cnt_disks_offset = 0x24;
-		public readonly int max_groups = 100;
-		public readonly int groups_offset = 0x28;
-		public readonly int group_length = 0x84;
-		public readonly int groupName_offset = 4;
+		public readonly int index_header_size = 40;
+		//public readonly int cnt_disks_offset = 0x24;
+		public readonly int index_max_groups = 100;
+		public readonly int index_list_data_size = 8;
+		//public readonly int groups_offset = 0x28;
+		//public readonly int group_length = 0x84;
+		//public readonly int groupName_offset = 4;
 		//public int groupName_length = 0x80;
-		public readonly int lists_offset;
-		public readonly int list_length = 8;
+		//public readonly int lists_offset;
+		//public readonly int list_length = 8;
 		//ALBUM
 		public readonly int album_max_lists = 100;
 		public readonly int album_header_size = 0x24;
@@ -150,76 +151,79 @@ namespace MMCS_MSE
 	class MSGroup : INotifyPropertyChanged
 	{
 		private int id;
-		private byte[] name_bytes = new byte[128];
+		private TrackDiscDesc name;
+		//private byte[] name_bytes = new byte[128];
 		private List<MSList> lists = new List<MSList>();
 		private List<MSDisc> discs = new List<MSDisc>();
-		private bool name_changed = false;
-		private bool added = false;
-		private bool deleted = false;
+		//private bool name_changed = false;
+		//private bool added = false;
+		//private bool deleted = false;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
-		public bool NameChanged
-		{
-			get { return this.name_changed; }
-			set { this.name_changed = value; }
-		}
-		public bool Added
-		{
-			get { return this.added; }
-			set { this.added = value; }
-		}
-		public bool Deleted
-		{
-			get { return this.deleted; }
-			set { this.deleted = value; }
-		}
+		//public bool NameChanged
+		//{
+		//	get { return this.name_changed; }
+		//	set { this.name_changed = value; }
+		//}
+		//public bool Added
+		//{
+		//	get { return this.added; }
+		//	set { this.added = value; }
+		//}
+		//public bool Deleted
+		//{
+		//	get { return this.deleted; }
+		//	set { this.deleted = value; }
+		//}
 
 		public int Id
 		{
 			get { return this.id; }
-			set { this.id = value; }
+			//set { this.id = value; }
 		}
 		public string Name
 		{
 			get
 			{
-				string name = "";
-				//←[tbl:NNN]
-				if (this.name_bytes[0] == 0x1b && this.name_bytes[1] == 0x5b)
-				{
-					string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-					uint str_id = Convert.ToUInt32(Encoding.GetEncoding(codePage).GetString(new byte[3] { this.name_bytes[6], this.name_bytes[7], this.name_bytes[8] }));
-					MMCSServer ms = new MMCSServer();
-					name = ms.get_TBLdata(str_id);
-				}
-				else
-				{
-					string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-					name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
-					//\x00 - end string
-					int null_offset = name.IndexOf('\x00');
-					name = (null_offset != -1) ? name.Substring(0, null_offset) : name;
-				}
-				return name;
+				//string name = "";
+				////←[tbl:NNN]
+				//if (this.name_bytes[0] == 0x1b && this.name_bytes[1] == 0x5b)
+				//{
+				//	string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				//	uint str_id = Convert.ToUInt32(Encoding.GetEncoding(codePage).GetString(new byte[3] { this.name_bytes[6], this.name_bytes[7], this.name_bytes[8] }));
+				//	MMCSServer ms = new MMCSServer();
+				//	name = ms.get_TBLdata(str_id);
+				//}
+				//else
+				//{
+				//	string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				//	name = new string(Encoding.GetEncoding(codePage).GetChars(this.name_bytes));
+				//	//\x00 - end string
+				//	int null_offset = name.IndexOf('\x00');
+				//	name = (null_offset != -1) ? name.Substring(0, null_offset) : name;
+				//}
+				//return name;
+				return this.name.Name;
 			}
 			set
 			{
-				if (this.Name == value) return;
+				if (this.name.Name == value) return;
 
-				string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
-				if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
-				this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
-				Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
-				this.name_changed = true;
+				//string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(value);
+				//if (new_name.Length > this.name_bytes.Length) Array.Resize(ref new_name, this.name_bytes.Length);
+				//this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
+				//Array.Copy(new_name, 0, this.name_bytes, 0, new_name.Length);
+				//this.name_changed = true;
+				this.name.Name = value;
 				OnPropertyChanged("Name");
 			}
 		}
-		public byte[] NameBytes
-		{
-			get { return this.name_bytes; }
-		}
+		//public byte[] NameBytes
+		//{
+		//	get { return this.name_bytes; }
+		//}
 		public List<MSList> Lists
 		{
 			get { return this.lists; }
@@ -228,43 +232,51 @@ namespace MMCS_MSE
 		{
 			get { return this.discs; }
 		}
-		public int Items
+		//public int Items
+		//{
+		//	get
+		//	{
+		//		return (this.discs.Count > 0) ? this.discs.Count : this.lists.Count;
+		//	}
+		//}
+		public void AddList(MSList list)
 		{
-			get
-			{
-				return (this.discs.Count > 0) ? this.discs.Count : this.lists.Count;
-			}
+			this.lists.Add(list);
+		}
+		public void AddDisc(MSDisc disc)
+		{
+			this.discs.Add(disc);
 		}
 
-		public MSGroup(int gid, byte[] gnbytes)
+		public MSGroup(byte[] id, byte[] name)
 		{
-			this.id = gid;
-			this.name_bytes = gnbytes;
+			this.id = BitConverter.ToInt32(id, 0);
+			this.name = new TrackDiscDesc(name);
 		}
-		public MSGroup(int gid, byte[] gnbytes, List<MSList> glists)
-		{
-			this.id = gid;
-			this.name_bytes = gnbytes;
-			this.lists = glists;
-		}
-		public MSGroup(int gid, byte[] gnbytes, List<MSDisc> gdiscs)
-		{
-			this.id = gid;
-			this.name_bytes = gnbytes;
-			this.discs = gdiscs;
-		}
-		public MSGroup(int gid, byte[] gnbytes, MSList glist)
-		{
-			this.id = gid;
-			this.name_bytes = gnbytes;
-			this.lists.Add(glist);
-		}
-		public MSGroup(int gid, byte[] gnbytes, MSDisc gdisc)
-		{
-			this.id = gid;
-			this.name_bytes = gnbytes;
-			this.discs.Add(gdisc);
-		}
+		//public MSGroup(int gid, byte[] gnbytes, List<MSList> glists)
+		//{
+		//	this.id = gid;
+		//	this.name_bytes = gnbytes;
+		//	this.lists = glists;
+		//}
+		//public MSGroup(int gid, byte[] gnbytes, List<MSDisc> gdiscs)
+		//{
+		//	this.id = gid;
+		//	this.name_bytes = gnbytes;
+		//	this.discs = gdiscs;
+		//}
+		//public MSGroup(int gid, byte[] gnbytes, MSList glist)
+		//{
+		//	this.id = gid;
+		//	this.name_bytes = gnbytes;
+		//	this.lists.Add(glist);
+		//}
+		//public MSGroup(int gid, byte[] gnbytes, MSDisc gdisc)
+		//{
+		//	this.id = gid;
+		//	this.name_bytes = gnbytes;
+		//	this.discs.Add(gdisc);
+		//}
 
 		protected void OnPropertyChanged(string name)
 		{

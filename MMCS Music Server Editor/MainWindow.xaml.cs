@@ -120,6 +120,7 @@ namespace MMCS_MSE
 		private void initServer(string path)
 		{
 			mserver.MainDir = path;
+			factTracks.Clear();
 			discs.Clear();
 			lists.Clear();
 			groups.Clear();
@@ -170,7 +171,7 @@ namespace MMCS_MSE
 
 		private void fill_groups_table()
 		{
-			clearLDTTables();
+			//clearLDTTables();
 
 			string info_path = mserver.get_INDEXpath();
 			if (!File.Exists(info_path))
@@ -181,87 +182,143 @@ namespace MMCS_MSE
 
 			using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.Read))
 			{
-				fs.Read(mserver.INDEXstart, 0, mserver.INDEXstart.Length);
+				byte[] index_header = new byte[mserver.index_header_size];
+				fs.Read(index_header, 0, index_header.Length);
 
-				fs.Position = mserver.cnt_disks_offset;
-				int lists_count = fs.ReadByte();
+				int list_count = BitConverter.ToInt32(new ArraySegment<byte>(index_header, 36, 4).ToArray(), 0);
 
-				fs.Position = mserver.groups_offset;
-				byte[] group_desc = new byte[mserver.group_length];
-				for (int i = 1; i <= mserver.max_groups; i++)
+				int file_size = mserver.index_header_size + mserver.index_max_groups * (4 + mserver.NameDesc_length) 
+					+ list_count * mserver.index_list_data_size;
+				// check file size
+				if (fs.Length != file_size)
 				{
-					fs.Read(group_desc, 0, group_desc.Length);
-					hf.spliceByteArray(group_desc, ref temp, 0, 4);
-					if (BitConverter.ToInt32(temp, 0) == 0x010000ff) break;
-
-					int group_id = temp[0];
-
-					//byte[] group_name_bytes = new byte[mserver.groupName_length];
-					//hf.spliceByteArray(group_desc, ref temp, mserver.groupName_offset, mserver.groupName_length);
-					//temp.CopyTo(group_name_bytes, 0);
-
-					//groups.Add(new MSGroup(group_id, group_name_bytes));
+					System.Windows.MessageBox.Show(fs.Name + ": incorrect data!");
+					return;
 				}
 
-				fs.Position = mserver.lists_offset;
-				byte[] list_data = new byte[mserver.list_length];
-				for (int i = 0; i < lists_count; i++)
+				for (int i = 0; i < mserver.index_max_groups; i++)
 				{
-					fs.Read(list_data, 0, list_data.Length);
-					int gid = list_data[7];
-					List<MSGroup> fgroups = groups.Where(g => g.Id == gid).ToList();
-					if (fgroups.Count == 0)
+					byte[] group_data = new byte[4 + mserver.NameDesc_length];
+					fs.Read(group_data, 0, group_data.Length);
+					int groupId = BitConverter.ToInt32(new ArraySegment<byte>(group_data, 0, 4).ToArray(), 0);
+					if (groupId > mserver.index_max_groups || groupId < 0)
 					{
-						//error
-						Console.Write("Group id " + gid + " not found!\n");
-						continue;
-					}
-					else if (fgroups.Count > 1)
-					{
-						//error
-						Console.Write("Group id " + gid + " not uniq!\n");
-						continue;
+						fs.Position += (mserver.index_max_groups - i - 1) * group_data.Length;
+						break;
 					}
 
-					if (list_data[4] == 0)
+					groups.Add(new MSGroup(
+						new ArraySegment<byte>(group_data, 0, 4).ToArray(),
+						new ArraySegment<byte>(group_data, 4, mserver.NameDesc_length).ToArray()
+					));
+				}
+
+				for (int i = 0; i < list_count; i++)
+				{
+					byte[] list_data = new byte[mserver.index_list_data_size];
+					fs.Read(list_data, 0, list_data.Length);
+
+					byte[] gid = new ArraySegment<byte>(list_data, 4, 4).ToArray();
+					// group id is last byte of data
+					gid[0] = 0;
+					Array.Reverse(gid);
+					int groupId = BitConverter.ToInt32(gid, 0);
+					if (groupId > 0)
 					{
-						//ElenmentId disc_id = new ElenmentId(list_data[3], list_data[0]);
-						//List<MSDisc> fdiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
-						//if (fdiscs.Count == 0)
-						//{
-						//	//error
-						//	Console.Write("Disc id " + disc_id.FullId + " not found!\n");
-						//	continue;
-						//}
-						//else if (fdiscs.Count > 1)
-						//{
-						//	//error
-						//	Console.Write("Disc id " + disc_id.FullId + " not uniq!\n");
-						//	continue;
-						//}
-						//fgroups[0].Discs.Add(fdiscs[0]);
+						int listId = BitConverter.ToInt32(new ArraySegment<byte>(list_data, 0, 4).ToArray(), 0);
+						groups.Where((gr) => gr.Id == groupId).First().Lists.Add(
+							lists.Where((lst) => lst.Id == listId).First()
+						);
 					}
 					else
 					{
-						int list_id = list_data[0];
-						List<MSList> flists = lists.Where(l => l.Id == list_id).ToList();
-						if (flists.Count == 0)
-						{
-							//error
-							Console.Write("List id " + list_id + " not found!\n");
-							continue;
-						}
-						else if (flists.Count > 1)
-						{
-							//error
-							Console.Write("List id " + list_id + " not uniq!\n");
-							continue;
-						}
-						fgroups[0].Lists.Add(flists[0]);
+						ElenmentId discid = new ElenmentId(new ArraySegment<byte>(list_data, 0, 4).ToArray());
+						// all disc is in group with id 0!
+						groups.Where((gr) => gr.Id == 0).First().Discs.Add(
+							discs.Where((dsc) => dsc.Id.FullId == discid.FullId).First()
+						);
 					}
 				}
+				//	fs.Position = mserver.cnt_disks_offset;
+				//	int lists_count = fs.ReadByte();
+
+				//	fs.Position = mserver.groups_offset;
+				//	byte[] group_desc = new byte[mserver.group_length];
+				//	for (int i = 1; i <= mserver.index_max_groups; i++)
+				//	{
+				//		fs.Read(group_desc, 0, group_desc.Length);
+				//		hf.spliceByteArray(group_desc, ref temp, 0, 4);
+				//		if (BitConverter.ToInt32(temp, 0) == 0x010000ff) break;
+
+				//		int group_id = temp[0];
+
+				//		//byte[] group_name_bytes = new byte[mserver.groupName_length];
+				//		//hf.spliceByteArray(group_desc, ref temp, mserver.groupName_offset, mserver.groupName_length);
+				//		//temp.CopyTo(group_name_bytes, 0);
+
+				//		//groups.Add(new MSGroup(group_id, group_name_bytes));
+				//	}
+
+				//	fs.Position = mserver.lists_offset;
+				//	byte[] list_data = new byte[mserver.list_length];
+				//	for (int i = 0; i < lists_count; i++)
+				//	{
+				//		fs.Read(list_data, 0, list_data.Length);
+				//		int gid = list_data[7];
+				//		List<MSGroup> fgroups = groups.Where(g => g.Id == gid).ToList();
+				//		if (fgroups.Count == 0)
+				//		{
+				//			//error
+				//			Console.Write("Group id " + gid + " not found!\n");
+				//			continue;
+				//		}
+				//		else if (fgroups.Count > 1)
+				//		{
+				//			//error
+				//			Console.Write("Group id " + gid + " not uniq!\n");
+				//			continue;
+				//		}
+
+				//		if (list_data[4] == 0)
+				//		{
+				//			//ElenmentId disc_id = new ElenmentId(list_data[3], list_data[0]);
+				//			//List<MSDisc> fdiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
+				//			//if (fdiscs.Count == 0)
+				//			//{
+				//			//	//error
+				//			//	Console.Write("Disc id " + disc_id.FullId + " not found!\n");
+				//			//	continue;
+				//			//}
+				//			//else if (fdiscs.Count > 1)
+				//			//{
+				//			//	//error
+				//			//	Console.Write("Disc id " + disc_id.FullId + " not uniq!\n");
+				//			//	continue;
+				//			//}
+				//			//fgroups[0].Discs.Add(fdiscs[0]);
+				//		}
+				//		else
+				//		{
+				//			int list_id = list_data[0];
+				//			List<MSList> flists = lists.Where(l => l.Id == list_id).ToList();
+				//			if (flists.Count == 0)
+				//			{
+				//				//error
+				//				Console.Write("List id " + list_id + " not found!\n");
+				//				continue;
+				//			}
+				//			else if (flists.Count > 1)
+				//			{
+				//				//error
+				//				Console.Write("List id " + list_id + " not uniq!\n");
+				//				continue;
+				//			}
+				//			fgroups[0].Lists.Add(flists[0]);
+				//		}
+				//	}
+				//}
+				//fs.Close();
 			}
-			//fs.Close();
 		}
 
 		private void fill_lists_array()
@@ -1045,10 +1102,10 @@ namespace MMCS_MSE
 			if (GroupsListView.SelectedItem == null) return;
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			if (group.Id < 2) return;
-			group.Deleted = true;
+			//group.Deleted = true;
 			foreach (MSGroup cg in groups)
 			{
-				if (cg.Id > group.Id) cg.Id--;
+				//if (cg.Id > group.Id) cg.Id--;
 			}
 			System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource).Refresh();
 
@@ -1105,7 +1162,7 @@ namespace MMCS_MSE
 
 			GroupsListView.Items.Refresh();
 			saveGroupsButton.IsEnabled = false;
-			if (groups.Where(g => g.NameChanged == true).ToList().Count > 0) saveFButton.IsEnabled = true;
+			//if (groups.Where(g => g.NameChanged == true).ToList().Count > 0) saveFButton.IsEnabled = true;
 		}
 
 		private void saveLDButton_Click(object sender, RoutedEventArgs e)
@@ -1237,7 +1294,7 @@ namespace MMCS_MSE
 			bool show_item = true;
 			if (itemType.Name == "MSGroup")
 			{
-				if ((item as MSGroup).Deleted) show_item = false;
+				//if ((item as MSGroup).Deleted) show_item = false;
 			}
 			else if (itemType.Name == "MSTrack")
 			{
@@ -1293,22 +1350,22 @@ namespace MMCS_MSE
 			{
 				foreach (MSGroup group in groups)
 				{
-					if (group.Added || group.Deleted || !group.NameChanged) continue;
-					group.NameChanged = false;
+					//if (group.Added || group.Deleted || !group.NameChanged) continue;
+					//group.NameChanged = false;
 
-					fs.Position = mserver.groups_offset;
-					byte[] group_desc = new byte[mserver.group_length];
-					for (int i = 1; i <= mserver.max_groups; i++)
+					//fs.Position = mserver.groups_offset;
+					//byte[] group_desc = new byte[mserver.group_length];
+					for (int i = 1; i <= mserver.index_max_groups; i++)
 					{
-						fs.Read(group_desc, 0, group_desc.Length);
-						hf.spliceByteArray(group_desc, ref temp, 0, 4);
-						if (BitConverter.ToInt32(temp, 0) == 0x010000ff) break;
+						//fs.Read(group_desc, 0, group_desc.Length);
+						//hf.spliceByteArray(group_desc, ref temp, 0, 4);
+						//if (BitConverter.ToInt32(temp, 0) == 0x010000ff) break;
 
-						if (temp[0] == group.Id)
-						{
-							//fs.Position -= mserver.groupName_length;
-							fs.Write(group.NameBytes, 0, group.NameBytes.Length);
-						}
+						//if (temp[0] == group.Id)
+						//{
+						//	//fs.Position -= mserver.groupName_length;
+						//	fs.Write(group.NameBytes, 0, group.NameBytes.Length);
+						//}
 					}
 				}
 			}
@@ -1333,38 +1390,38 @@ namespace MMCS_MSE
 			{
 				foreach (MSGroup group in groups.OrderBy(g => g.Id))
 				{
-					if (!group.Added || group.Deleted) continue;
-					group.Added = false;
+					//if (!group.Added || group.Deleted) continue;
+					//group.Added = false;
 
-					fs.Position = mserver.groups_offset;
-					byte[] group_desc = new byte[mserver.group_length];
-					for (int i = 1; i <= mserver.max_groups; i++)
+					//fs.Position = mserver.groups_offset;
+					//byte[] group_desc = new byte[mserver.group_length];
+					for (int i = 1; i <= mserver.index_max_groups; i++)
 					{
-						fs.Read(group_desc, 0, group_desc.Length);
-						hf.spliceByteArray(group_desc, ref temp, 0, 4);
-						if (BitConverter.ToInt32(temp, 0) == 0x010000ff)
-						{
-							fs.Position -= mserver.group_length;
-							fs.Write(new byte[4] { (byte)group.Id, 0x00, 0x00, 0x00 }, 0, 4);
-							fs.Write(group.NameBytes, 0, group.NameBytes.Length);
-							if (group.Lists.Count > 0)
-							{
-								//need increase size of file???
-								fs.Position = fs.Length;
-								foreach (MSList list in group.Lists)
-								{
-									fs.Write(new byte[8] { (byte)list.Id, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, (byte)group.Id }, 0, 8);
-									long cur_offset = fs.Position;
+						//fs.Read(group_desc, 0, group_desc.Length);
+						//hf.spliceByteArray(group_desc, ref temp, 0, 4);
+						//if (BitConverter.ToInt32(temp, 0) == 0x010000ff)
+						//{
+						//	fs.Position -= mserver.group_length;
+						//	fs.Write(new byte[4] { (byte)group.Id, 0x00, 0x00, 0x00 }, 0, 4);
+						//	fs.Write(group.NameBytes, 0, group.NameBytes.Length);
+						//	if (group.Lists.Count > 0)
+						//	{
+						//		//need increase size of file???
+						//		fs.Position = fs.Length;
+						//		foreach (MSList list in group.Lists)
+						//		{
+						//			fs.Write(new byte[8] { (byte)list.Id, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, (byte)group.Id }, 0, 8);
+						//			long cur_offset = fs.Position;
 
-									fs.Position = mserver.cnt_disks_offset;
-									int cur_cnt = fs.ReadByte();
-									fs.Position -= 1;
-									fs.WriteByte((byte)(cur_cnt + 1));
-									fs.Position = cur_offset;
-								}
-							}
-							break;
-						}
+						//			fs.Position = mserver.cnt_disks_offset;
+						//			int cur_cnt = fs.ReadByte();
+						//			fs.Position -= 1;
+						//			fs.WriteByte((byte)(cur_cnt + 1));
+						//			fs.Position = cur_offset;
+						//		}
+						//	}
+						//	break;
+						//}
 					}
 				}
 			}
@@ -1516,20 +1573,20 @@ namespace MMCS_MSE
 			else if (itemType.Name == "MSGroup")
 			{
 				MSGroup el = (item as MSGroup);
-				if (el.Added)
-				{
-					LVitem.ToolTip = "Group added!";
-					brush = yellow_brush;
-				}
-				else if (el.NameChanged)
-				{
-					LVitem.ToolTip = "Group name changed!";
-					brush = green_brush;
-				}
-				else
-				{
-					return LVitem.Style;
-				}
+				//if (el.Added)
+				//{
+				//	LVitem.ToolTip = "Group added!";
+				//	brush = yellow_brush;
+				//}
+				//else if (el.NameChanged)
+				//{
+				//	LVitem.ToolTip = "Group name changed!";
+				//	brush = green_brush;
+				//}
+				//else
+				//{
+				//	return LVitem.Style;
+				//}
 			}
 			else
 			{
