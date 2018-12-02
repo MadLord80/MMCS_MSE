@@ -41,8 +41,9 @@ namespace MMCS_MSE
 
 		internal bool is_favTrack(MSTrack track)
 		{
-			bool is_fav = this.lists.Where(l => l.Id == mserver.fav_listId).First().Songs.Contains(track);
-			return is_fav;
+			//bool is_fav = this.lists.Where(l => l.Id == mserver.fav_listId).First().Tracks.Contains(track);
+			//return is_fav;
+			return false;
 		}
 
 		public MainWindow()
@@ -274,96 +275,153 @@ namespace MMCS_MSE
 
 			using (FileStream fs = new FileStream(album_path, FileMode.Open, FileAccess.Read))
 			{
-				fs.Read(mserver.ALBUMstart, 0, mserver.ALBUMstart.Length);
+				List<int> trackListSizes = new List<int>();
 
-				int[] lists_sizes = new int[mserver.max_lists];
-
-				fs.Position = mserver.lists_size_offset;
-				for (int i = 0; i < lists_sizes.Length; i++)
+				fs.Position = mserver.title_header_size;
+				//tracks size maybe 0!
+				for (int i = 0; i < mserver.album_max_lists; i++)
 				{
-					byte[] list_size = new byte[mserver.list_size_length];
-					fs.Read(list_size, 0, list_size.Length);
-					int size = BitConverter.ToInt32(list_size, 0);
-					if (size == 0)
-					{
-						Array.Resize(ref lists_sizes, i);
-						break;
-					}
-					lists_sizes[i] = size;
+					byte[] trackListSize = new byte[mserver.album_length_size];
+					fs.Read(trackListSize, 0, trackListSize.Length);
+					int tls = BitConverter.ToInt32(trackListSize, 0);
+					if (tls == 0) { continue; }
+					trackListSizes.Add(tls);
+					//dtracks_sizes[i] = BitConverter.ToInt32(dtrack_size, 0);
+					//st -= dtracks_sizes[i];
+				}
+				//disc.StartTitle = BitConverter.GetBytes(st);
+
+				int header_and_listsizes_offset = mserver.album_header_size + mserver.album_length_size * mserver.album_max_lists;
+				// check file size
+				if (fs.Length != header_and_listsizes_offset + trackListSizes.Sum())
+				{
+					System.Windows.MessageBox.Show(fs.Name + ": incorrect data!");
+					return;
 				}
 
-				fs.Position = mserver.alists_offset;
-				foreach (int size in lists_sizes)
+				//int discPrefixTracks_offset = mserver.dtracks_offset;
+				int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
+				fs.Position = header_and_listsizes_offset;
+				for (int i = 0; i < trackListSizes.Count; i++)
 				{
-					byte[] list_data = new byte[size];
-					fs.Read(list_data, 0, list_data.Length);
+					byte[] list_header = new byte[mserver.album_list_header_size];
+					fs.Read(list_header, 0, list_header.Length);
+					MSList list = new MSList(
+						BitConverter.ToInt32(new ArraySegment<byte>(list_header, 4, 4).ToArray(), 0),
+						new ArraySegment<byte>(list_header, 20, mserver.NameDesc_length).ToArray()
+					);
 
-					hf.spliceByteArray(list_data, ref temp, 0, mserver.a_unknown_length);
-					byte[] lst = new byte[mserver.a_unknown_length];
-					temp.CopyTo(lst, 0);
-
-					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length, 1);
-					int lid = temp[0];
-					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length, 1);
-					byte lid_cnt = temp[0];
-					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 1, 1);
-					int songs_cnt = temp[0];
-
-					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 4, 4);
-					byte[] ldelim = new byte[4];
-					temp.CopyTo(ldelim, 0);
-					hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 8, 4);
-					byte[] lcode = new byte[4];
-					temp.CopyTo(lcode, 0);
-
-					byte[] list_name_bytes = new byte[mserver.listName_length];
-					hf.spliceByteArray(list_data, ref temp, mserver.listName_offset, mserver.listName_length);
-					temp.CopyTo(list_name_bytes, 0);
-
-					MSList list = new MSList(lid, list_name_bytes);
-					list.LStart = lst;
-					list.LId_cnt = lid_cnt;
-					list.LDelim = ldelim;
-					list.LCode = lcode;
-
-					string errors = "";
-					for (int i = 0; i < songs_cnt; i++)
+					byte[] tc = new ArraySegment<byte>(list_header, 9, 4).ToArray();
+					// BitConverter.ToInt32 need 4 bytes
+					tc[3] = 0;
+					int tracks_count = BitConverter.ToInt32(tc, 0);
+					for (int k = 0; k < tracks_count; k++)
 					{
-						hf.spliceByteArray(list_data, ref temp, mserver.list_desc_length + i * mserver.asong_data_length, mserver.asong_data_length);
-						//ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
-						//List<MSDisc> ldiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
-						//if (ldiscs.Count == 0)
-						//{
-						//	errors += "Disc " + disc_id.FullId + " not found!\n";
-						//	continue;
-						//}
-						//else if (ldiscs.Count > 1)
-						//{
-						//	errors += "Disc " + disc_id.FullId + " not uniq!\n";
-						//	continue;
-						//}
-						//List<MSTrack> dtracks = ldiscs[0].Tracks.Where(tr => tr.Id == temp[4]).ToList();
-						//if (dtracks.Count == 0)
-						//{
-						//	errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not found!\n";
-						//	continue;
-						//}
-						//else if (dtracks.Count > 1)
-						//{
-						//	errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not uniq!\n";
-						//	continue;
-						//}
+						byte[] track_data = new byte[mserver.album_track_data_size];
+						fs.Read(track_data, 0, track_data.Length);
 
-						//dtracks[0].ListDelim = new byte[8] {
-						//	temp[8], temp[9], temp[10], temp[11],
-						//	temp[12], temp[13], temp[14], temp[15],
-						//};
-
-						//list.Songs.Add(dtracks[0]);
+						//ElenmentId discid = new ElenmentId(
+						//	new ArraySegment<byte>(track_data, 0, 4).ToArray()
+						//);
+						//int tracknum = BitConverter.ToInt32(new ArraySegment<byte>(track_data, 4, 4).ToArray(), 0);
+						list.AddTrackRef(new MSTrackRef(
+							new ArraySegment<byte>(track_data, 0, 4).ToArray(),
+							new ArraySegment<byte>(track_data, 4, 4).ToArray()
+						));
 					}
-					list.Errors = errors;
+
 					lists.Add(list);
 				}
+				//	fs.Read(mserver.ALBUMstart, 0, mserver.ALBUMstart.Length);
+
+				//	int[] lists_sizes = new int[mserver.album_max_lists];
+
+				//	fs.Position = mserver.album_header_size;
+				//	for (int i = 0; i < lists_sizes.Length; i++)
+				//	{
+				//		byte[] list_size = new byte[mserver.list_size_length];
+				//		fs.Read(list_size, 0, list_size.Length);
+				//		int size = BitConverter.ToInt32(list_size, 0);
+				//		if (size == 0)
+				//		{
+				//			Array.Resize(ref lists_sizes, i);
+				//			break;
+				//		}
+				//		lists_sizes[i] = size;
+				//	}
+
+				//	fs.Position = mserver.alists_offset;
+				//	foreach (int size in lists_sizes)
+				//	{
+				//		byte[] list_data = new byte[size];
+				//		fs.Read(list_data, 0, list_data.Length);
+
+				//		hf.spliceByteArray(list_data, ref temp, 0, mserver.a_unknown_length);
+				//		byte[] lst = new byte[mserver.a_unknown_length];
+				//		temp.CopyTo(lst, 0);
+
+				//		hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length, 1);
+				//		int lid = temp[0];
+				//		hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length, 1);
+				//		byte lid_cnt = temp[0];
+				//		hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 1, 1);
+				//		int songs_cnt = temp[0];
+
+				//		hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 4, 4);
+				//		byte[] ldelim = new byte[4];
+				//		temp.CopyTo(ldelim, 0);
+				//		hf.spliceByteArray(list_data, ref temp, mserver.a_unknown_length + mserver.listId_length + 8, 4);
+				//		byte[] lcode = new byte[4];
+				//		temp.CopyTo(lcode, 0);
+
+				//		byte[] list_name_bytes = new byte[mserver.listName_length];
+				//		hf.spliceByteArray(list_data, ref temp, mserver.listName_offset, mserver.listName_length);
+				//		temp.CopyTo(list_name_bytes, 0);
+
+				//		MSList list = new MSList(lid, list_name_bytes);
+				//		list.LStart = lst;
+				//		list.LId_cnt = lid_cnt;
+				//		list.LDelim = ldelim;
+				//		list.LCode = lcode;
+
+				//		string errors = "";
+				//		for (int i = 0; i < songs_cnt; i++)
+				//		{
+				//			hf.spliceByteArray(list_data, ref temp, mserver.list_desc_length + i * mserver.asong_data_length, mserver.asong_data_length);
+				//			//ElenmentId disc_id = new ElenmentId(temp[3], temp[0]);
+				//			//List<MSDisc> ldiscs = discs.Where(d => d.Id.FullId == disc_id.FullId).ToList();
+				//			//if (ldiscs.Count == 0)
+				//			//{
+				//			//	errors += "Disc " + disc_id.FullId + " not found!\n";
+				//			//	continue;
+				//			//}
+				//			//else if (ldiscs.Count > 1)
+				//			//{
+				//			//	errors += "Disc " + disc_id.FullId + " not uniq!\n";
+				//			//	continue;
+				//			//}
+				//			//List<MSTrack> dtracks = ldiscs[0].Tracks.Where(tr => tr.Id == temp[4]).ToList();
+				//			//if (dtracks.Count == 0)
+				//			//{
+				//			//	errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not found!\n";
+				//			//	continue;
+				//			//}
+				//			//else if (dtracks.Count > 1)
+				//			//{
+				//			//	errors += "Track " + String.Format("{0,3:000}", temp[4]) + ".sc for disc " + disc_id.FullId + " not uniq!\n";
+				//			//	continue;
+				//			//}
+
+				//			//dtracks[0].ListDelim = new byte[8] {
+				//			//	temp[8], temp[9], temp[10], temp[11],
+				//			//	temp[12], temp[13], temp[14], temp[15],
+				//			//};
+
+				//			//list.Songs.Add(dtracks[0]);
+				//		}
+				//		list.Errors = errors;
+				//		lists.Add(list);
+				//	}
 			}
 		}
 
@@ -595,11 +653,11 @@ namespace MMCS_MSE
 				lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Value.Id.FullId") });
 				MSList list = (listViewTemplate.SelectedItem as MSList);
 				Dictionary<MSTrack, MSDisc> ls = new Dictionary<MSTrack, MSDisc>();
-				foreach (MSTrack lt in list.Songs)
-				{
-					MSDisc td = discs.Where(d => d.Tracks.Contains(lt)).First();
-					ls.Add(lt, td);
-				}
+				//foreach (MSTrack lt in list.Tracks)
+				//{
+				//	MSDisc td = discs.Where(d => d.Tracks.Contains(lt)).First();
+				//	ls.Add(lt, td);
+				//}
 				TrackslistView.ItemsSource = ls;
 				copyTrackButton.ToolTip = "Copy DiscId: Name-Artist to clipboard";
 			}
@@ -653,11 +711,11 @@ namespace MMCS_MSE
 					foreach (MSGroup gr in groups)
 					{
 						if (gr.Id == group.Id) continue;
-						gr.Lists.ForEach(l => l.Songs.Remove(track));
+						//gr.Lists.ForEach(l => l.Tracks.Remove(track));
 					}
 					foreach (MSList ls in lists)
 					{
-						ls.Songs.Remove(track);
+						//ls.Tracks.Remove(track);
 					}
 				}
 				group.Discs.Remove(disc);
@@ -724,13 +782,13 @@ namespace MMCS_MSE
 				{
 					if (list.Id == newListId) newListId++;
 				}
-				byte[] newName = new byte[mserver.listName_length];
-				Array.ForEach(newName, b => b = 0x00);
-				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New list");
-				Array.Copy(new_name, 0, newName, 0, new_name.Length);
-				MSList nlist = new MSList(newListId, new_name);
-				lists.Add(nlist);
-				group.Lists.Add(nlist);
+				//byte[] newName = new byte[mserver.listName_length];
+				//Array.ForEach(newName, b => b = 0x00);
+				//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New list");
+				//Array.Copy(new_name, 0, newName, 0, new_name.Length);
+				//MSList nlist = new MSList(newListId, new_name);
+				//lists.Add(nlist);
+				//group.Lists.Add(nlist);
 			}
 			else
 			{
@@ -806,7 +864,7 @@ namespace MMCS_MSE
 			if (itemType.Name == "MSList") return;
 
 			MSDisc disc = (listViewTemplate.SelectedItem as MSDisc);
-			int newId = disc.Tracks.Max(t => t.Id) + 1;
+			//int newId = disc.Tracks.Max(t => t.Id) + 1;
 			//if (newId > mserver.max_dtracks - 1)
 			//{
 			//	System.Windows.MessageBox.Show("Max tracks per disc: " + (mserver.max_dtracks - 1));
@@ -854,7 +912,7 @@ namespace MMCS_MSE
 				if (listViewTemplate.SelectedItem == null) return;
 				KeyValuePair<MSTrack, MSDisc> ls = (KeyValuePair<MSTrack, MSDisc>)TrackslistView.SelectedItem;
 				MSList list = (listViewTemplate.SelectedItem as MSList);
-				list.Songs.Remove(ls.Key as MSTrack);
+				//list.Tracks.Remove(ls.Key as MSTrack);
 				fill_tracks_table();
 			}
 
@@ -1091,11 +1149,11 @@ namespace MMCS_MSE
 			MSTrack track = (img.DataContext as MSTrack);
 			if (is_favTrack(track))
 			{
-				lists.Where(l => l.Id == mserver.fav_listId).First().Songs.Remove(track);
+				//lists.Where(l => l.Id == mserver.fav_listId).First().Tracks.Remove(track);
 			}
 			else
 			{
-				lists.Where(l => l.Id == mserver.fav_listId).First().Songs.Add(track);
+				//lists.Where(l => l.Id == mserver.fav_listId).First().Tracks.Add(track);
 			}
 
 			TrackslistView.SelectedItem = null;
