@@ -232,13 +232,14 @@ namespace MMCS_MSE
 		{
 			get { return this.discs; }
 		}
-		//public int Items
-		//{
-		//	get
-		//	{
-		//		return (this.discs.Count > 0) ? this.discs.Count : this.lists.Count;
-		//	}
-		//}
+		public int Items
+		{
+			get
+			{
+				//return (this.discs.Count > 0) ? this.discs.Count : this.lists.Count;
+				return (this.id == 0) ? this.discs.Count : this.lists.Count;
+			}
+		}
 		public void AddList(MSList list)
 		{
 			this.lists.Add(list);

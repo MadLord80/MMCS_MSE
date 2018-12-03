@@ -152,6 +152,10 @@ namespace MMCS_MSE
 		private void fill_fact_tracks()
 		{
 			string data_path = mserver.get_DATApath();
+			if (!Directory.Exists(data_path))
+			{
+				return;
+			}
 			DirectoryInfo[] dirsID = new DirectoryInfo(data_path).GetDirectories();
 			foreach (DirectoryInfo dirID in dirsID)
 			{
@@ -525,12 +529,11 @@ namespace MMCS_MSE
 		{
 			//foreach (MSDisc disc in discs)
 			//{
-			//string title_path = mserver.get_TITLEpath(disc.Id);
-			//if (!File.Exists(title_path))
-			//{
-			//	disc.Errors = title_path + " not found!";
-			//	continue;
-			//}
+			string title_path = mserver.get_TITLEpath();
+			if (!Directory.Exists(title_path))
+			{
+				return;
+			}
 			DirectoryInfo[] title_dirs = new DirectoryInfo(mserver.get_TITLEpath()).GetDirectories();
 			foreach (DirectoryInfo title_dir in title_dirs)
 			{
@@ -998,7 +1001,6 @@ namespace MMCS_MSE
 		{
 			if (GroupsListView.SelectedItem == null) return;
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
-			//Bad condition!!!
 			if (group.Id == 0)
 			{
 				fill_disks_table();
@@ -1585,7 +1587,7 @@ namespace MMCS_MSE
 				//}
 				//else
 				//{
-				//	return LVitem.Style;
+				return LVitem.Style;
 				//}
 			}
 			else
