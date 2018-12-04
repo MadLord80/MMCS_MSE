@@ -119,6 +119,8 @@ namespace MMCS_MSE
 
 		private void initServer(string path)
 		{
+			clearLDTTables();
+
 			mserver.MainDir = path;
 			factTracks.Clear();
 			discs.Clear();
@@ -205,7 +207,13 @@ namespace MMCS_MSE
 					byte[] group_data = new byte[4 + mserver.NameDesc_length];
 					fs.Read(group_data, 0, group_data.Length);
 					int groupId = BitConverter.ToInt32(new ArraySegment<byte>(group_data, 0, 4).ToArray(), 0);
-					if (groupId > mserver.index_max_groups || groupId < 0)
+					if (groupId != i && groupId != 0x010000ff)
+					{
+						string groupName = new TrackDiscDesc(new ArraySegment<byte>(group_data, 4, mserver.NameDesc_length).ToArray()).Name;
+						System.Windows.MessageBox.Show(groupId + ": fail group id for group " + groupName + "!");
+						return;
+					}
+					if (groupId == 0x010000ff)
 					{
 						fs.Position += (mserver.index_max_groups - i - 1) * group_data.Length;
 						break;
@@ -381,14 +389,20 @@ namespace MMCS_MSE
 						byte[] track_data = new byte[mserver.album_track_data_size];
 						fs.Read(track_data, 0, track_data.Length);
 
-						//ElenmentId discid = new ElenmentId(
-						//	new ArraySegment<byte>(track_data, 0, 4).ToArray()
-						//);
-						//int tracknum = BitConverter.ToInt32(new ArraySegment<byte>(track_data, 4, 4).ToArray(), 0);
-						list.AddTrackRef(new MSTrackRef(
-							new ArraySegment<byte>(track_data, 0, 4).ToArray(),
-							new ArraySegment<byte>(track_data, 4, 4).ToArray()
-						));
+						ElenmentId discid = new ElenmentId(
+							new ArraySegment<byte>(track_data, 0, 4).ToArray()
+						);
+						int tracknum = BitConverter.ToInt32(new ArraySegment<byte>(track_data, 4, 4).ToArray(), 0);
+
+						list.AddTrack(
+							discs.Where((dsc) => dsc.Id.FullId == discid.FullId).First()
+							.Tracks.Where((trk) => trk.Id == tracknum).First()
+						);
+
+						//list.AddTrackRef(new MSTrackRef(
+						//	new ArraySegment<byte>(track_data, 0, 4).ToArray(),
+						//	new ArraySegment<byte>(track_data, 4, 4).ToArray()
+						//));
 					}
 
 					lists.Add(list);
@@ -593,12 +607,18 @@ namespace MMCS_MSE
 							}
 
 							// disc desc
-							fs.Position += track_desc_size;
+							byte[] disc_artist = new byte[track_desc_size];
+							fs.Read(disc_artist, 0, disc_artist.Length);
+							curDisc.SetArtist(new ArraySegment<byte>(disc_artist, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray());
+							//fs.Position += track_desc_size;
+
 							for (int tid = 0; tid < tracks_count; tid++)
 							{
 								byte[] track_data = new byte[track_desc_size];
 								fs.Read(track_data, 0, track_data.Length);
-								MSTrack track = new MSTrack(tid + 1,
+								MSTrack track = new MSTrack(
+									curDisc.Id,
+									tid + 1,
 									new ArraySegment<byte>(track_data, 0, mserver.NameDesc_length).ToArray(),
 									new ArraySegment<byte>(track_data, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray()
 								);
@@ -657,7 +677,7 @@ namespace MMCS_MSE
 			listViewTemplate.View = lview;
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 280, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
-			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Songs.Count") });
+			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Tracks.Count") });
 			copyButtonTemplate.ToolTip = "Copy Name to clipboard";
 
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
@@ -707,18 +727,23 @@ namespace MMCS_MSE
 				tracksLabelTemplate.Content = "Tracks";
 				GridView lview = new GridView();
 				TrackslistView.View = lview;
-				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Key.File") });
-				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Key.Name") });
-				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Key.Artist") });
-				lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Value.Id.FullId") });
+				//lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Key.File") });
+				//lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Key.Name") });
+				//lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Key.Artist") });
+				//lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("Value.Id.FullId") });
+				lview.Columns.Add(new GridViewColumn() { Header = "File", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("File") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
+				lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("DiscID.FullId") });
 				MSList list = (listViewTemplate.SelectedItem as MSList);
-				Dictionary<MSTrack, MSDisc> ls = new Dictionary<MSTrack, MSDisc>();
+				//Dictionary<MSTrack, MSDisc> ls = new Dictionary<MSTrack, MSDisc>();
 				//foreach (MSTrack lt in list.Tracks)
 				//{
 				//	MSDisc td = discs.Where(d => d.Tracks.Contains(lt)).First();
 				//	ls.Add(lt, td);
 				//}
-				TrackslistView.ItemsSource = ls;
+				//TrackslistView.ItemsSource = ls;
+				TrackslistView.ItemsSource = list.Tracks;
 				copyTrackButton.ToolTip = "Copy DiscId: Name-Artist to clipboard";
 			}
 		}
@@ -1052,6 +1077,18 @@ namespace MMCS_MSE
 					break;
 				case "donnnn1":
 					dir = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\descr\\donnn1\\full\\AVUNIT";
+					break;
+				case "r-01":
+					dir = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_from_r01\\AVUNIT";
+					break;
+				case "babatu":
+					dir = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_from_r03_babatu\\AVUNIT";
+					break;
+				case "igorkaana":
+					dir = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_from_r03_igorkaanna\\AVUNIT";
+					break;
+				case "my current":
+					dir = "D:\\Cloud\\домашнее\\outlander\\files\\sound\\music_server_mycurrent\\AVUNIT";
 					break;
 				default:
 					break;
@@ -1524,7 +1561,36 @@ namespace MMCS_MSE
 			//	BitConverter.ToString(new byte[1] { (byte)did }) 
 			//	+ "0000" 
 			//	+ BitConverter.ToString(new byte[1] { (byte)dpf });
+
+			//ObservableCollection<testItem> list1 = new ObservableCollection<testItem> {
+			//	new testItem(1), new testItem(2), new testItem(3)
+			//};
+			//testClass obj = new testClass(list1.Where((l) => l.Id == 1).First());
+			//obj.AddString(list1.Where((l) => l.Id == 2).First());
+			//obj.AddString(list1.Where((l) => l.Id == 3).First());
+			//list1.Remove(list1.Where((l) => l.Id == 2).First());
 		}
+		//class testItem
+		//{
+		//	private int id;
+		//	public int Id { get { return this.id; } }
+		//	public testItem(int id)
+		//	{
+		//		this.id = id;
+		//	}
+		//}
+		//class testClass
+		//{
+		//	private List<testItem> strings;
+		//	public void AddString (testItem str)
+		//	{
+		//		this.strings.Add(str);
+		//	}
+		//	public testClass(testItem str)
+		//	{
+		//		this.strings = new List<testItem>() { str };
+		//	}
+		//}
 	}
 
 	public class LVStyleSelector : StyleSelector

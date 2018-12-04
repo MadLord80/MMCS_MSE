@@ -21,7 +21,7 @@
             <MenuItem Header="Tools" Height="24" Margin="0" VerticalAlignment="Top">
                 <MenuItem x:Name="reportButton" Header="Report" HorizontalAlignment="Left" Width="96" Click="reportButton_Click"/>
             </MenuItem>
-            <MenuItem x:Name="testButton" Header="Test" Height="24" Margin="0" VerticalAlignment="Top" Width="100"/>
+            <MenuItem x:Name="testButton" Header="Test" Height="24" Margin="0" VerticalAlignment="Top" Width="100" Click="TestButton_Click"/>
         </Menu>
         <Label x:Name="label" Content="Groups (max 100)" HorizontalAlignment="Left" Margin="8,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
         <ListView x:Name="GroupsListView" HorizontalAlignment="Left" Height="310" Margin="8,93,0,0" VerticalAlignment="Top" Width="382" BorderBrush="#FFA8AFBD" Background="#FF333333" MouseUp="GroupsListView_onclick">
@@ -120,5 +120,9 @@
         <Button x:Name="saveLDButton" Content="Save" HorizontalAlignment="Left" Margin="749,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveLDButton_Click"/>
         <Button x:Name="saveTButton" Content="Save" HorizontalAlignment="Left" Margin="1183,408,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveTButton_Click"/>
         <Button x:Name="saveFButton" Content="Update files" HorizontalAlignment="Left" Margin="1183,440,0,0" VerticalAlignment="Top" Width="75" IsEnabled="False" Click="saveFButton_Click"/>
+        <RadioButton x:Name="radioButton_Copy11" Content="r-01" HorizontalAlignment="Left" Margin="354,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked" RenderTransformOrigin="0.826,0.625"/>
+        <RadioButton x:Name="radioButton_Copy12" Content="babatu" HorizontalAlignment="Left" Margin="428,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy13" Content="igorkaana" HorizontalAlignment="Left" Margin="518,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <RadioButton x:Name="radioButton_Copy14" Content="my current" HorizontalAlignment="Left" Margin="618,448,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
     </Grid>
 </Window>

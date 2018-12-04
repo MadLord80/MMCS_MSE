@@ -293,7 +293,8 @@ namespace MMCS_MSE
 		private int id;
 		private TrackDiscDesc name;
 		//private byte[] name_bytes = new byte[384];
-		private List<MSTrackRef> tracks = new List<MSTrackRef>();
+		//private List<MSTrackRef> tracks = new List<MSTrackRef>();
+		private List<MSTrack> tracks = new List<MSTrack>();
 		private string errors = "";
 		//for report
 		//private byte[] lstart = new byte[4];
@@ -370,7 +371,11 @@ namespace MMCS_MSE
 				OnPropertyChanged("Name");
 			}
 		}
-		public List<MSTrackRef> Tracks
+		//public List<MSTrackRef> Tracks
+		//{
+		//	get { return this.tracks; }
+		//}
+		public List<MSTrack> Tracks
 		{
 			get { return this.tracks; }
 		}
@@ -384,9 +389,13 @@ namespace MMCS_MSE
 			}
 		}
 
-		public void AddTrackRef(MSTrackRef trackRef)
+		//public void AddTrackRef(MSTrackRef trackRef)
+		//{
+		//	this.tracks.Add(trackRef);
+		//}
+		public void AddTrack(MSTrack track)
 		{
-			this.tracks.Add(trackRef);
+			this.tracks.Add(track);
 		}
 
 		public MSList(int lid, byte[] lname)
@@ -432,7 +441,8 @@ namespace MMCS_MSE
 	{
 		private ElenmentId id;
 		private TrackDiscDesc name;
-		//private TrackDiscDesc artist;
+		// artist - from TITLE file
+		private TrackDiscDesc artist;
 		//private byte[] name_bytes = new byte[80];
 		//private byte[] nameLoc_bytes = new byte[40];
 		//private byte[] artist_bytes = new byte[80];
@@ -515,28 +525,28 @@ namespace MMCS_MSE
 		//		OnPropertyChanged("NameLoc");
 		//	}
 		//}
-		//public string Artist
-		//{
-		//	get
-		//	{
-		//		//string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-		//		//string name = new string(Encoding.GetEncoding(codePage).GetChars(this.artist_bytes));
-		//		////\x00 - end string
-		//		//int null_offset = name.IndexOf('\x00');
-		//		//return (null_offset != -1) ? name.Substring(0, null_offset) : name;
-		//		return this.artist.Name;
-		//	}
-		//	set
-		//	{
-		//		//string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-		//		//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes(value);
-		//		//if (new_artist.Length > this.artist_bytes.Length) Array.Resize(ref new_artist, this.artist_bytes.Length);
-		//		//this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
-		//		//Array.Copy(new_artist, 0, this.artist_bytes, 0, new_artist.Length);
-		//		this.artist.Name = value;
-		//		OnPropertyChanged("Artist");
-		//	}
-		//}
+		public string Artist
+		{
+			get
+			{
+				//string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				//string name = new string(Encoding.GetEncoding(codePage).GetChars(this.artist_bytes));
+				////\x00 - end string
+				//int null_offset = name.IndexOf('\x00');
+				//return (null_offset != -1) ? name.Substring(0, null_offset) : name;
+				return this.artist.Name;
+			}
+			//set
+			//{
+			//	//string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+			//	//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes(value);
+			//	//if (new_artist.Length > this.artist_bytes.Length) Array.Resize(ref new_artist, this.artist_bytes.Length);
+			//	//this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
+			//	//Array.Copy(new_artist, 0, this.artist_bytes, 0, new_artist.Length);
+			//	this.artist.Name = value;
+			//	OnPropertyChanged("Artist");
+			//}
+		}
 		//public string ArtistLoc
 		//{
 		//	get
@@ -573,6 +583,11 @@ namespace MMCS_MSE
 				this.errors += value + "\n";
 				//OnPropertyChanged("Errors");
 			}
+		}
+
+		public void SetArtist(byte[] artist)
+		{
+			this.artist = new TrackDiscDesc(artist);
 		}
 
 		public MSDisc(ElenmentId did, byte[] dname)
@@ -655,6 +670,7 @@ namespace MMCS_MSE
 		private int id;
 		private TrackDiscDesc name;
 		private TrackDiscDesc artist;
+		private ElenmentId disc;
 		//private byte[] name_bytes = new byte[80];
 		//private byte[] nameLoc_bytes = new byte[40];
 		//private byte[] artist_bytes = new byte[80];
@@ -689,6 +705,11 @@ namespace MMCS_MSE
 		//	get { return this.ldelim; }
 		//	set { this.ldelim = value; }
 		//}
+
+		public ElenmentId DiscID
+		{
+			get { return this.disc; }
+		}
 
 		public int Id
 		{
@@ -810,8 +831,9 @@ namespace MMCS_MSE
 			set { this.is_exist = value; }
 		}
 
-		public MSTrack(int tid, byte[] tname, byte[] tartist)
+		public MSTrack(ElenmentId disc, int tid, byte[] tname, byte[] tartist)
 		{
+			this.disc = disc;
 			this.id = tid;
 			this.name = new TrackDiscDesc(tname);
 			this.artist = new TrackDiscDesc(tartist);
@@ -874,23 +896,23 @@ namespace MMCS_MSE
 	//	}
 	//}
 
-	class MSTrackRef
-	{
-		private ElenmentId discid;
-		private int num;
+	//class MSTrackRef
+	//{
+	//	private ElenmentId discid;
+	//	private int num;
 
-		public MSTrack Get_track(ObservableCollection<MSDisc> discs)
-		{
-			MSDisc fdisc = discs.Where((dsc) => dsc.Id.FullId == this.discid.FullId).First();
-			return fdisc.Tracks.Where((trk) => trk.Id == num).First();
-		}
+	//	public MSTrack Get_track(ObservableCollection<MSDisc> discs)
+	//	{
+	//		MSDisc fdisc = discs.Where((dsc) => dsc.Id.FullId == this.discid.FullId).First();
+	//		return fdisc.Tracks.Where((trk) => trk.Id == num).First();
+	//	}
 
-		public MSTrackRef(byte[] discid, byte[] id)
-		{
-			this.discid = new ElenmentId(discid);
-			this.num = BitConverter.ToInt32(id, 0);
-		}
-	}
+	//	public MSTrackRef(byte[] discid, byte[] id)
+	//	{
+	//		this.discid = new ElenmentId(discid);
+	//		this.num = BitConverter.ToInt32(id, 0);
+	//	}
+	//}
 
 	class ElenmentId
 	{
