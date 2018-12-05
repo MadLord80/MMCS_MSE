@@ -254,6 +254,11 @@ namespace MMCS_MSE
 			this.id = BitConverter.ToInt32(id, 0);
 			this.name = new TrackDiscDesc(name);
 		}
+		public MSGroup(int id, string name)
+		{
+			this.id = id;
+			this.name = new TrackDiscDesc(name);
+		}
 		//public MSGroup(int gid, byte[] gnbytes, List<MSList> glists)
 		//{
 		//	this.id = gid;
@@ -536,16 +541,16 @@ namespace MMCS_MSE
 				//return (null_offset != -1) ? name.Substring(0, null_offset) : name;
 				return this.artist.Name;
 			}
-			//set
-			//{
-			//	//string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
-			//	//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes(value);
-			//	//if (new_artist.Length > this.artist_bytes.Length) Array.Resize(ref new_artist, this.artist_bytes.Length);
-			//	//this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
-			//	//Array.Copy(new_artist, 0, this.artist_bytes, 0, new_artist.Length);
-			//	this.artist.Name = value;
-			//	OnPropertyChanged("Artist");
-			//}
+			set
+			{
+				//	//string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+				//	//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes(value);
+				//	//if (new_artist.Length > this.artist_bytes.Length) Array.Resize(ref new_artist, this.artist_bytes.Length);
+				//	//this.artist_bytes = Enumerable.Repeat((byte)0x00, this.artist_bytes.Length).ToArray();
+				//	//Array.Copy(new_artist, 0, this.artist_bytes, 0, new_artist.Length);
+				this.artist.Name = value;
+				OnPropertyChanged("Artist");
+			}
 		}
 		//public string ArtistLoc
 		//{
@@ -1005,6 +1010,14 @@ namespace MMCS_MSE
 			if (name.Length > this.name.Length) Array.Resize(ref name, this.name.Length);
 			Array.Copy(name, 0, this.name, 0, name.Length);
 			//this.nameLoc = nameLoc;
+		}
+		public TrackDiscDesc(string name)
+		{
+			string codePage = ((MainWindow)System.Windows.Application.Current.MainWindow).CodePage;
+			byte[] new_name = Encoding.GetEncoding(codePage).GetBytes(name);
+			if (new_name.Length > this.name.Length) Array.Resize(ref new_name, this.name.Length);
+			this.name = Enumerable.Repeat((byte)0x00, this.name.Length).ToArray();
+			Array.Copy(new_name, 0, this.name, 0, new_name.Length);
 		}
 		//public TrackDiscDesc(byte[] name, byte[] nameLoc)
 		//{

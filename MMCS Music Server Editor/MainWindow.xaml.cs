@@ -530,7 +530,7 @@ namespace MMCS_MSE
 						new ArraySegment<byte>(disc_desc, 1, 4).ToArray(),
 						new ArraySegment<byte>(disc_desc, 12, 128).ToArray()
 					);
-					if (factTracks.Select((kvp) => kvp.Key.FullId == disc.Id.FullId).ToArray().Length > 0)
+					if (factTracks.Where((kvp) => kvp.Key.FullId == disc.Id.FullId).ToArray().Length > 0)
 					{
 						disc.Exists = true;
 					}
@@ -622,7 +622,7 @@ namespace MMCS_MSE
 									new ArraySegment<byte>(track_data, 0, mserver.NameDesc_length).ToArray(),
 									new ArraySegment<byte>(track_data, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray()
 								);
-								if (factTracks.Select((kvp) => kvp.Key.FullId == discid.FullId && kvp.Value.Contains(tid + 1)).ToArray().Length > 0)
+								if (factTracks.Where((kvp) => kvp.Key.FullId == discid.FullId && kvp.Value.Contains(tid + 1)).ToArray().Length > 0)
 								{
 									track.Exists = true;
 								}
@@ -698,6 +698,12 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Tracks.Count") });
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+			// absent discs folders in ORG_ARRAY
+			//List<MSDisc> discs = group.Discs;
+			//if (group.Id == 0 && factTracks.Count > group.Discs.Count)
+			//{
+
+			//}
 			listViewTemplate.ItemsSource = group.Discs;
 			copyButtonTemplate.ToolTip = "Copy Name-Artist to clipboard";
 		}
@@ -1120,18 +1126,19 @@ namespace MMCS_MSE
 		private void addGroupButton_Click(object sender, RoutedEventArgs e)
 		{
 			if (groups.Count == 0) return;
-			int newId = 2;
-			foreach (MSGroup group in groups)
-			{
-				if (group.Id == newId) newId++;
-			}
+			//int newId = 2;
+			int newId = groups.Max((grp) => grp.Id) + 1;
+			//foreach (MSGroup group in groups)
+			//{
+			//	if (group.Id == newId) newId++;
+			//}
 			//byte[] newName = new byte[mserver.groupName_length];
 			//Array.ForEach(newName, b => b = 0x00);
-			byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New group");
+			//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New group");
 			//Array.Copy(new_name, 0, newName, 0, new_name.Length);
-			//MSGroup ngroup = new MSGroup(newId, newName);
+			MSGroup ngroup = new MSGroup(newId, "New group");
 			//ngroup.Added = true;
-			//groups.Add(ngroup);
+			groups.Add(ngroup);
 
 			saveFButton.IsEnabled = true;
 		}
@@ -1141,11 +1148,12 @@ namespace MMCS_MSE
 			if (GroupsListView.SelectedItem == null) return;
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 			if (group.Id < 2) return;
+			groups.Remove(group);
 			//group.Deleted = true;
-			foreach (MSGroup cg in groups)
-			{
-				//if (cg.Id > group.Id) cg.Id--;
-			}
+			//foreach (MSGroup cg in groups)
+			//{
+			//if (cg.Id > group.Id) cg.Id--;
+			//}
 			System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource).Refresh();
 
 			saveFButton.IsEnabled = true;
@@ -1570,6 +1578,7 @@ namespace MMCS_MSE
 			//obj.AddString(list1.Where((l) => l.Id == 3).First());
 			//list1.Remove(list1.Where((l) => l.Id == 2).First());
 		}
+
 		//class testItem
 		//{
 		//	private int id;
@@ -1607,8 +1616,18 @@ namespace MMCS_MSE
 			if (itemType.Name == "MSDisc")
 			{
 				MSDisc el = (item as MSDisc);
-				if (el.Errors == "") return LVitem.Style;
-				LVitem.ToolTip = el.Errors;
+				if (el.Errors != "")
+				{
+					LVitem.ToolTip = el.Errors;
+				}				
+				if (!el.Exists)
+				{
+					LVitem.ToolTip += "\nDisc folder not exist!\n";
+				}
+				else
+				{
+					return LVitem.Style;
+				}
 			}
 			else if (itemType.Name == "MSList")
 			{
