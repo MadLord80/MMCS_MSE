@@ -412,6 +412,11 @@ namespace MMCS_MSE
 			//Array.Copy(lname, 0, this.name_bytes, 0, lname.Length);
 			this.name = new TrackDiscDesc(lname);
 		}
+		public MSList(int lid, string lname)
+		{
+			this.id = lid;
+			this.name = new TrackDiscDesc(lname);
+		}
 		//public MSList(int lid, byte[] lname, List<MSTrack> lsongs)
 		//{
 		//	this.id = lid;
@@ -612,6 +617,12 @@ namespace MMCS_MSE
 			//this.name_bytes = Enumerable.Repeat((byte)0x00, this.name_bytes.Length).ToArray();
 			//if (dname.Length > this.name_bytes.Length) Array.Resize(ref dname, this.name_bytes.Length);
 			//Array.Copy(dname, 0, this.name_bytes, 0, dname.Length);
+			this.name = new TrackDiscDesc(dname);
+			this.is_exist = false;
+		}
+		public MSDisc(ElenmentId did, string dname)
+		{
+			this.id = did;
 			this.name = new TrackDiscDesc(dname);
 			this.is_exist = false;
 		}
@@ -929,10 +940,12 @@ namespace MMCS_MSE
 		public int Id
 		{
 			get { return this.id; }
+			set { this.id = value; }
 		}
 		public int Prefix
 		{
 			get { return this.prefix; }
+			set { this.prefix = value; }
 		}
 		public string FullId
 		{
@@ -961,11 +974,11 @@ namespace MMCS_MSE
 			this.id = discid[0];
 			this.prefix = discid[3];
 		}
-		//public ElenmentId(int eid, int eprefix)
-		//{
-		//	this.id = eid;
-		//	this.prefix = eprefix;
-		//}
+		public ElenmentId(int eid, int eprefix)
+		{
+			this.id = eid;
+			this.prefix = eprefix;
+		}
 	}
 
 	class TrackDiscDesc

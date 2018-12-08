@@ -11,6 +11,7 @@ using System.IO;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace MMCS_MSE
 {
@@ -193,7 +194,7 @@ namespace MMCS_MSE
 
 				int list_count = BitConverter.ToInt32(new ArraySegment<byte>(index_header, 36, 4).ToArray(), 0);
 
-				int file_size = mserver.index_header_size + mserver.index_max_groups * (4 + mserver.NameDesc_length) 
+				int file_size = mserver.index_header_size + mserver.index_max_groups * (4 + mserver.NameDesc_length)
 					+ list_count * mserver.index_list_data_size;
 				// check file size
 				if (fs.Length != file_size)
@@ -866,13 +867,21 @@ namespace MMCS_MSE
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
 
 			//Bad condition!!!
-			if (group.Id > 0)
+			if (group.Id > 1)
 			{
 				int newListId = 3;
-				foreach (MSList list in lists)
+				foreach (MSGroup grp in groups)
 				{
-					if (list.Id == newListId) newListId++;
+					if (grp.Id < 2 || grp.Lists.Count < 1) { continue; }
+					int ListId = grp.Lists.Max((lst) => lst.Id) + 1;
+					if (ListId > newListId) { newListId = ListId; }
 				}
+
+				group.AddList(new MSList(newListId, "New list"));
+				//foreach (MSList list in lists)
+				//{
+				//	if (list.Id == newListId) newListId++;
+				//}
 				//byte[] newName = new byte[mserver.listName_length];
 				//Array.ForEach(newName, b => b = 0x00);
 				//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New list");
@@ -881,24 +890,57 @@ namespace MMCS_MSE
 				//lists.Add(nlist);
 				//group.Lists.Add(nlist);
 			}
-			else
+			else if (group.Id == 0)
 			{
-				//неизвестно, как сервер выделяет новые индексы
-				//бывает просто: XX000001, где XX - новый индекс
-				//а бывает: YY000002, где YY - индекс существующего диска YY000001
-				int newDiscId = 0;
-				foreach (MSDisc disc in discs)
+				if (group.Discs.Count >= 0x3b * 100)
 				{
-					if (disc.Id.Id >= newDiscId) newDiscId = disc.Id.Id;
+					System.Windows.MessageBox.Show("Maximum number of drives reached!");
+					return;
 				}
-				newDiscId++;
+
+				// NN0000MM
+				// ищем максимальный NN + 1
+				// если максимальный NN + 1 > 0x3B, то начиная с NN = 0
+				// ищем MM + 1 < 100
+				ElenmentId newDiscId = (group.Discs.Count > 0)
+					? new ElenmentId(group.Discs.Max((dsc) => dsc.Id.Id) + 1, 1)
+					: new ElenmentId(0, 1);
+				bool founded = false;
+				if (newDiscId.Id > 0x3b)
+				{
+					for (int i = 0; i < 0x3c; i++)
+					{
+						if (founded) { break; }
+						for (int k = 1; k < 101; k++)
+						{
+							newDiscId.Id = i; newDiscId.Prefix = k;
+							if (group.Discs.Where((dsc) => dsc.Id.FullId == newDiscId.FullId).ToArray().Length > 0)
+							{ continue; }
+
+							founded = true;
+							break;
+						}
+					}
+				}
+				if (!founded)
+				{
+					System.Windows.MessageBox.Show("Can`t find new disc id!");
+					return;
+				}
+				group.AddDisc(new MSDisc(newDiscId, "New disc"));
+
+				//foreach (MSDisc disc in discs)
+				//{
+				//	if (disc.Id.Id >= newDiscId) newDiscId = disc.Id.Id;
+				//}
+				//newDiscId++;
 
 				//byte[] newName = new byte[mserver.discName_length];
 				//byte[] newArtist = new byte[mserver.dtArtist_length];
 				//Array.ForEach(newName, b => b = 0x00);
 				//Array.ForEach(newArtist, b => b = 0x00);
-				byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New disc");
-				byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
+				//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New disc");
+				//byte[] new_artist = Encoding.GetEncoding(codePage).GetBytes("New artist");
 				//Array.Copy(new_name, 0, newName, 0, new_name.Length);
 				//Array.Copy(new_artist, 0, newArtist, 0, new_artist.Length);
 				//MSDisc ndisc = new MSDisc(new ElenmentId(newDiscId, 1), newName, newArtist);
@@ -1577,6 +1619,58 @@ namespace MMCS_MSE
 			//obj.AddString(list1.Where((l) => l.Id == 2).First());
 			//obj.AddString(list1.Where((l) => l.Id == 3).First());
 			//list1.Remove(list1.Where((l) => l.Id == 2).First());
+		}
+
+		private void ServerFromDir_Button_Click(object sender, RoutedEventArgs e)
+		{
+			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+			{
+				string sc_path = opendir.SelectedPath;
+				createDirTracksFromDir(sc_path);
+			}
+		}
+
+		private void createDirTracksFromDir(string sc_path)
+		{
+			MSDisc[] discs = { };
+			DirectoryInfo[] discsDirs = new DirectoryInfo(sc_path).GetDirectories();
+			foreach (DirectoryInfo dir in discsDirs)
+			{
+				if (!File.Exists(dir.FullName + "//TITLE.lst")) { continue; }
+				FileInfo[] sc_files = dir.GetFiles("???.sc").Where((f) => Regex.IsMatch(f.Name, @"^[0-9]{3}\.sc$")).ToArray();
+				if (sc_files.Length == 0 || sc_files.Length > 99) { continue; }
+
+				ElenmentId discId = getNexDiscId(discs);
+				if (discId == null)
+				{
+					System.Windows.MessageBox.Show("Can`t find new disc id for " + dir.Name + "!");
+					return;
+				}
+			}
+		}
+
+		private ElenmentId getNexDiscId(MSDisc[] discs)
+		{
+			ElenmentId newDiscId = new ElenmentId(0, 1);
+			if (discs.Length == 0) { return newDiscId; }
+
+			bool founded = false;
+			for (int i = 0; i < 0x3c; i++)
+			{
+				if (founded) { break; }
+				for (int k = 1; k < 101; k++)
+				{
+					newDiscId.Id = i; newDiscId.Prefix = k;
+					if (discs.Where((dsc) => dsc.Id.FullId == newDiscId.FullId).ToArray().Length > 0)
+					{
+						continue;
+					}
+					founded = true;
+					break;
+				}
+			}
+			if (!founded) { return null; }
+			return newDiscId;
 		}
 
 		//class testItem
