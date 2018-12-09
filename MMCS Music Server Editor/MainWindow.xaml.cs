@@ -1626,14 +1626,77 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				string sc_path = opendir.SelectedPath;
-				createDirTracksFromDir(sc_path);
+
+				factTracks.Clear();
+				discs.Clear();
+				lists.Clear();
+				groups.Clear();
+
+				List<MSDisc> origDiscs = createDirTracksFromDir(sc_path);
+				if (origDiscs.Count == 0)
+				{
+					System.Windows.MessageBox.Show("Valid tracks not found!");
+					return;
+				}
+				createDefaultData(origDiscs);
+				GroupsListView.Items.Refresh();
 			}
 		}
 
-		private void createDirTracksFromDir(string sc_path)
+		private List<MSDisc> createDirTracksFromDir(string sc_path)
 		{
-			MSDisc[] discs = { };
+			List<MSDisc> discs = new List<MSDisc>();
 			DirectoryInfo[] discsDirs = new DirectoryInfo(sc_path).GetDirectories();
+			if (discsDirs.Length == 0)
+			{
+				DirectoryInfo dir = new DirectoryInfo(sc_path);
+				if (!File.Exists(dir.FullName + "//TITLE.lst")) { return discs; }
+				FileInfo[] sc_files = dir.GetFiles("???.sc").Where((f) => Regex.IsMatch(f.Name, @"^[0-9]{3}\.sc$")).ToArray();
+				if (sc_files.Length == 0 || sc_files.Length > 99) { return discs; }
+
+				ElenmentId discId = getNexDiscId(discs);
+				if (discId == null)
+				{
+					System.Windows.MessageBox.Show("Can`t find new disc id for " + dir.Name + "!");
+					return null;
+				}
+
+				// may be use disc name from TITLE.lst?
+				MSDisc disc = new MSDisc(discId, dir.Name);
+				disc.Exists = true;
+				int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
+				using (FileStream fs = new FileStream(dir.FullName + "//TITLE.lst", FileMode.Open, FileAccess.Read))
+				{
+					fs.Position = mserver.title_header_size + mserver.title_max_lengths * mserver.title_length_size;
+
+					byte[] list_header = new byte[mserver.title_list_header_size];
+					fs.Read(list_header, 0, list_header.Length);
+					int tracks_count = new ArraySegment<byte>(list_header, 8, 1).ToArray()[0];
+
+					// disc desc
+					//byte[] disc_artist = new byte[track_desc_size];
+					//fs.Read(disc_artist, 0, disc_artist.Length);
+					fs.Position += track_desc_size;
+
+					for (int tid = 0; tid < tracks_count; tid++)
+					{
+						byte[] track_data = new byte[track_desc_size];
+						fs.Read(track_data, 0, track_data.Length);
+						MSTrack track = new MSTrack(
+							disc.Id,
+							tid + 1,
+							new ArraySegment<byte>(track_data, 0, mserver.NameDesc_length).ToArray(),
+							new ArraySegment<byte>(track_data, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray()
+						);
+						if (sc_files.Where((sc) => sc.Name == track.File).ToArray().Length == 0) { continue; }
+						track.Exists = true;
+						disc.AddTrack(track);
+					}
+				}
+				discs.Add(disc);
+				return discs;
+			}
+
 			foreach (DirectoryInfo dir in discsDirs)
 			{
 				if (!File.Exists(dir.FullName + "//TITLE.lst")) { continue; }
@@ -1644,15 +1707,62 @@ namespace MMCS_MSE
 				if (discId == null)
 				{
 					System.Windows.MessageBox.Show("Can`t find new disc id for " + dir.Name + "!");
-					return;
+					return null;
 				}
+
+				// may be use disc name from TITLE.lst?
+				MSDisc disc = new MSDisc(discId, dir.Name);
+				disc.Exists = true;
+				int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
+				using (FileStream fs = new FileStream(dir.FullName + "//TITLE.lst", FileMode.Open, FileAccess.Read))
+				{
+					fs.Position = mserver.title_header_size + mserver.title_max_lengths * mserver.title_length_size;
+
+					byte[] list_header = new byte[mserver.title_list_header_size];
+					fs.Read(list_header, 0, list_header.Length);
+					int tracks_count = new ArraySegment<byte>(list_header, 8, 1).ToArray()[0];
+
+					// disc desc
+					//byte[] disc_artist = new byte[track_desc_size];
+					//fs.Read(disc_artist, 0, disc_artist.Length);
+					fs.Position += track_desc_size;
+
+					for (int tid = 0; tid < tracks_count; tid++)
+					{
+						byte[] track_data = new byte[track_desc_size];
+						fs.Read(track_data, 0, track_data.Length);
+						MSTrack track = new MSTrack(
+							disc.Id,
+							tid + 1,
+							new ArraySegment<byte>(track_data, 0, mserver.NameDesc_length).ToArray(),
+							new ArraySegment<byte>(track_data, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray()
+						);
+						if (sc_files.Where((sc) => sc.Name == track.File).ToArray().Length == 0) { continue; }
+						track.Exists = true;
+						disc.AddTrack(track);
+					}
+				}
+				discs.Add(disc);
 			}
+			return discs;
 		}
 
-		private ElenmentId getNexDiscId(MSDisc[] discs)
+		private void createDefaultData(List<MSDisc> discs)
+		{
+			MSGroup origDiscs = new MSGroup(0, 171);
+			origDiscs.Discs.AddRange(discs);
+			groups.Add(origDiscs);
+
+			MSGroup bestFiles = new MSGroup(1, 172);
+			bestFiles.Lists.Add(new MSList(1, 174));
+			bestFiles.Lists.Add(new MSList(2, 173));
+			groups.Add(bestFiles);
+		}
+
+		private ElenmentId getNexDiscId(List<MSDisc> discs)
 		{
 			ElenmentId newDiscId = new ElenmentId(0, 1);
-			if (discs.Length == 0) { return newDiscId; }
+			if (discs.Count == 0) { return newDiscId; }
 
 			bool founded = false;
 			for (int i = 0; i < 0x3c; i++)

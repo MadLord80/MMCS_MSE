@@ -63,7 +63,7 @@ namespace MMCS_MSE
 		public readonly int disc_songscnt_length = 4;
 		//public readonly int disc_enddesc_length = 16;
 		//TITLE
-		public readonly int title_discid_offset = 19;
+		//public readonly int title_discid_offset = 19;
 		public readonly int title_header_size = 0x24;
 		public readonly int title_max_lengths = 100;
 		public readonly int title_length_size = 4;
@@ -259,6 +259,12 @@ namespace MMCS_MSE
 			this.id = id;
 			this.name = new TrackDiscDesc(name);
 		}
+		public MSGroup(int id, uint name)
+		{
+			this.id = id;
+			MMCSServer ms = new MMCSServer();
+			this.name = new TrackDiscDesc(ms.get_TBLdata(name));
+		}
 		//public MSGroup(int gid, byte[] gnbytes, List<MSList> glists)
 		//{
 		//	this.id = gid;
@@ -416,6 +422,12 @@ namespace MMCS_MSE
 		{
 			this.id = lid;
 			this.name = new TrackDiscDesc(lname);
+		}
+		public MSList(int lid, uint lname)
+		{
+			this.id = lid;
+			MMCSServer ms = new MMCSServer();
+			this.name = new TrackDiscDesc(ms.get_TBLdata(lname));
 		}
 		//public MSList(int lid, byte[] lname, List<MSTrack> lsongs)
 		//{
