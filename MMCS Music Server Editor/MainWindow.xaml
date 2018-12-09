@@ -5,11 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MMCS_MSE"
         mc:Ignorable="d"
-        Title="MMCS Music Server Editor" Height="522" Width="1285.339" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="#FF333333">
+        Title="MMCS Music Server Editor" Height="537" Width="1285.339" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="#FF333333">
     <Window.Resources>
         <ResourceDictionary Source="ExpressionDark.xaml"/>
     </Window.Resources>
-    <Grid Background="#FF58585D" VerticalAlignment="Top" Height="496">
+    <Grid Background="#FF58585D" VerticalAlignment="Top" Height="512" Margin="0,0,0,-18">
         <Menu x:Name="menu" Height="24" VerticalAlignment="Top" Width="1388" Background="#FF333333" HorizontalAlignment="Left">
             <MenuItem Header="Open" Padding="6,3">
                 <MenuItem x:Name="OpenAVDirButton" Header="AVUNIT directory" Margin="0" Width="136" Padding="0,3,2,3" Click="OpenAVDirButton_Click" HorizontalAlignment="Left"/>
@@ -125,5 +125,6 @@
         <RadioButton x:Name="radioButton_Copy12" Content="babatu" HorizontalAlignment="Left" Margin="428,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
         <RadioButton x:Name="radioButton_Copy13" Content="igorkaana" HorizontalAlignment="Left" Margin="518,445,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
         <RadioButton x:Name="radioButton_Copy14" Content="my current" HorizontalAlignment="Left" Margin="618,448,0,0" VerticalAlignment="Top" GroupName="sel_avunit" Checked="radioButton_Checked"/>
+        <Button x:Name="createServer_Button" Content="Create server" HorizontalAlignment="Left" Margin="1183,468,0,0" VerticalAlignment="Top" Width="75" Click="CreateServer_Button_Click"/>
     </Grid>
 </Window>

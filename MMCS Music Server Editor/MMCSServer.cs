@@ -11,14 +11,14 @@ namespace MMCS_MSE
 	{
 		//paths
 		private string main_dir;
-		private readonly string INFO_path = "\\INFO";
-		private readonly string ALBUM_path = "\\ALBUM";
-		private readonly string TITLE_path = "\\TITLE";
-		private readonly string DATA_path = "\\DATA";
+		public readonly string INFO_path = "\\INFO";
+		public readonly string ALBUM_path = "\\ALBUM";
+		public readonly string TITLE_path = "\\TITLE";
+		public readonly string DATA_path = "\\DATA";
 		//private string CUSTOM_path = "\\CUSTOM";		
 
 		//Settings
-		private readonly string defALBUM_ID = "0000001";
+		public readonly string defALBUM_ID = "0000001";
 
 		public readonly int NameDesc_length = 0x80;
 		public readonly int NameLocDesc_length = 0x40;
@@ -129,13 +129,13 @@ namespace MMCS_MSE
 			return path;
 		}
 
-		public string get_SCpath(ElenmentId disc, int track_id)
-		{
-			string disc_id = String.Format("{0,2:00}", BitConverter.ToString(new byte[1] { (byte)disc.Id }));
-			string track_file = String.Format("{0,3:000}.sc", track_id);
-			string path = main_dir + DATA_path + DATA_path + disc_id + "\\" + disc.FullId + "\\" + track_file;
-			return path;
-		}
+		//public string get_SCpath(ElenmentId disc, int track_id)
+		//{
+		//	string disc_id = String.Format("{0,2:00}", BitConverter.ToString(new byte[1] { (byte)disc.Id }));
+		//	string track_file = String.Format("{0,3:000}.sc", track_id);
+		//	string path = main_dir + DATA_path + DATA_path + disc_id + "\\" + disc.FullId + "\\" + track_file;
+		//	return path;
+		//}
 
 		public string get_TBLdata(uint id)
 		{

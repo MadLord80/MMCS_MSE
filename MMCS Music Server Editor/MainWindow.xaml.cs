@@ -75,6 +75,8 @@ namespace MMCS_MSE
 			delTrackButton.Click += new RoutedEventHandler(on_delTrack);
 			addTrackButton.Click += new RoutedEventHandler(on_addTrack);
 			copyTrackButton.Click += new RoutedEventHandler(on_copyTrack);
+
+			createServer_Button.Visibility = Visibility.Hidden;
 		}
 
 		private void hideButtons(bool hide)
@@ -1638,8 +1640,10 @@ namespace MMCS_MSE
 					System.Windows.MessageBox.Show("Valid tracks not found!");
 					return;
 				}
-				createDefaultData(origDiscs);
+				createDefaultGroups(origDiscs);
 				GroupsListView.Items.Refresh();
+				mserver.MainDir = sc_path;
+				createServer_Button.Visibility = Visibility.Visible;
 			}
 		}
 
@@ -1747,7 +1751,7 @@ namespace MMCS_MSE
 			return discs;
 		}
 
-		private void createDefaultData(List<MSDisc> discs)
+		private void createDefaultGroups(List<MSDisc> discs)
 		{
 			MSGroup origDiscs = new MSGroup(0, 171);
 			origDiscs.Discs.AddRange(discs);
@@ -1781,6 +1785,36 @@ namespace MMCS_MSE
 			}
 			if (!founded) { return null; }
 			return newDiscId;
+		}
+
+		private void CreateServer_Button_Click(object sender, RoutedEventArgs e)
+		{
+			string AVunitDir = mserver.MainDir + "\\AVUNIT";
+			if (Directory.Exists(AVunitDir)) { Directory.Delete(AVunitDir, true); }
+			Directory.CreateDirectory(AVunitDir);
+			mserver.MainDir = AVunitDir;
+
+			// create ALBUM
+			Directory.CreateDirectory(mserver.MainDir + mserver.INFO_path + mserver.ALBUM_path + mserver.ALBUM_path + mserver.defALBUM_ID);
+			using (FileStream fs = new FileStream(mserver.get_ALBUMpath(), FileMode.Create, FileAccess.Write))
+			{
+				// header
+				byte[] album_header = new byte[mserver.album_header_size];
+				string header_text = "SLJA_ALBUM:1.3 " + mserver.defALBUM_ID;
+				Encoding.UTF8.GetBytes(header_text).CopyTo(album_header, 4);
+				fs.Write(album_header, 0, album_header.Length);
+				// lengths
+				byte[] lengths = new byte[mserver.album_max_lists * mserver.album_length_size];
+				fs.Write(lengths, 0, lengths.Length);
+			}
+
+			// create DISCID
+			// create RECORD
+			// create TITLE
+			// create INDEX
+			// create ORG_ARRAY
+			// create others (AVVRALBUMARTIST.lst etc.)???
+			// create DATA (copy/move files, add DISCID files)
 		}
 
 		//class testItem
