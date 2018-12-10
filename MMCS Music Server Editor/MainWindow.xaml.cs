@@ -1822,7 +1822,7 @@ namespace MMCS_MSE
 				new byte[] { 0x1b }.CopyTo(ol_header, 20);
 				Encoding.UTF8.GetBytes("[tbl:173]").CopyTo(ol_header, 21);
 				hf.checksum32bit(ol_header).CopyTo(ol_header, 0);
-				// checksum of lists
+				// lengths of lists
 				BitConverter.GetBytes(fl_header.Length).CopyTo(lengths, 0);
 				BitConverter.GetBytes(ol_header.Length).CopyTo(lengths, 4);
 				// checksum of header
