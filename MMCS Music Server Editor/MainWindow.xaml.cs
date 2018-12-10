@@ -1628,7 +1628,8 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				//string sc_path = opendir.SelectedPath;
-				string sc_path = "D:\\tmp\\testmusic_oma";
+				//string sc_path = "D:\\tmp\\testmusic_oma";
+				string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
 				factTracks.Clear();
 				discs.Clear();
@@ -1803,10 +1804,8 @@ namespace MMCS_MSE
 				byte[] album_header = new byte[mserver.album_header_size];
 				string header_text = "SLJA_ALBUM:1.3 " + mserver.defALBUM_ID;
 				Encoding.UTF8.GetBytes(header_text).CopyTo(album_header, 4);
-				fs.Write(album_header, 0, album_header.Length);
 				// lengths
 				byte[] lengths = new byte[mserver.album_max_lists * mserver.album_length_size];
-				fs.Write(lengths, 0, lengths.Length);
 				// fav list header
 				byte[] fl_header = new byte[mserver.album_list_header_size];
 				new byte[] { 0x01 }.CopyTo(fl_header, 4);
@@ -1814,10 +1813,7 @@ namespace MMCS_MSE
 				mserver.defALBUM_delim.CopyTo(fl_header, 12);
 				new byte[] { 0x1b }.CopyTo(fl_header, 20);
 				Encoding.UTF8.GetBytes("[tbl:174]").CopyTo(fl_header, 21);
-				fs.Write(fl_header, 0, fl_header.Length);
-				//9DA704C2
-				// {byte[4]}
-				byte[] cs = hf.checksum32bit(fl_header);
+				hf.checksum32bit(fl_header).CopyTo(fl_header, 0);
 				// offen list header
 				byte[] ol_header = new byte[mserver.album_list_header_size];
 				new byte[] { 0x02 }.CopyTo(ol_header, 4);
@@ -1825,6 +1821,19 @@ namespace MMCS_MSE
 				mserver.defALBUM_delim.CopyTo(ol_header, 12);
 				new byte[] { 0x1b }.CopyTo(ol_header, 20);
 				Encoding.UTF8.GetBytes("[tbl:173]").CopyTo(ol_header, 21);
+				hf.checksum32bit(ol_header).CopyTo(ol_header, 0);
+				// checksum of lists
+				BitConverter.GetBytes(fl_header.Length).CopyTo(lengths, 0);
+				BitConverter.GetBytes(ol_header.Length).CopyTo(lengths, 4);
+				// checksum of header
+				hf.checksum32bit(album_header, lengths).CopyTo(album_header, 0);
+				// write header
+				fs.Write(album_header, 0, album_header.Length);
+				// write lengths
+				fs.Write(lengths, 0, lengths.Length);
+				// write fav list header
+				fs.Write(fl_header, 0, fl_header.Length);
+				// write offen list header
 				fs.Write(ol_header, 0, ol_header.Length);
 			}
 

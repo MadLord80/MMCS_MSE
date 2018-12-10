@@ -8,65 +8,21 @@ namespace MMCS_MSE
 	{
 		public byte[] checksum32bit(byte[] data)
 		{
-			string cc = ToBase32String(data);
-
-			byte[] cs = new byte[4];
-			int hash = data.GetHashCode();
-			if (data.Length % 4 > 0) { return cs; }
+			UInt32 acc = 0;
+			if (data.Length % 4 > 0) { return BitConverter.GetBytes(acc); }
 
 			for (int i = 0; i < data.Length; i += 4)
 			{
-				cs[0] += data[i];
-				cs[1] += data[i + 1];
-				cs[2] += data[i + 2];
-				cs[3] += data[i + 3];
+				byte[] dbytes = new byte[] { data[i], data[i + 1], data[i + 2], data[i+ 3] };
+				acc += BitConverter.ToUInt32(dbytes, 0);
 			}
-			return cs;
+			return BitConverter.GetBytes(acc);
 		}
-
-		public static string ToBase32String(byte[] bytes)
+		public byte[] checksum32bit(byte[] data1, byte[] data2)
 		{
-			string ValidChars = "QAZ2WSX3" + "EDC4RFV5" + "TGB6YHN7" + "UJM8K9LP";
-
-			StringBuilder sb = new StringBuilder();         // holds the base32 chars
-			byte index;
-			int hi = 5;
-			int currentByte = 0;
-
-			while (currentByte < bytes.Length)
-			{
-				// do we need to use the next byte?
-				if (hi > 8)
-				{
-					// get the last piece from the current byte, shift it to the right
-					// and increment the byte counter
-					index = (byte)(bytes[currentByte++] >> (hi - 5));
-					if (currentByte != bytes.Length)
-					{
-						// if we are not at the end, get the first piece from
-						// the next byte, clear it and shift it to the left
-						index = (byte)(((byte)(bytes[currentByte] << (16 - hi)) >> 3) | index);
-					}
-
-					hi -= 3;
-				}
-				else if (hi == 8)
-				{
-					index = (byte)(bytes[currentByte++] >> 3);
-					hi -= 3;
-				}
-				else
-				{
-
-					// simply get the stuff from the current byte
-					index = (byte)((byte)(bytes[currentByte] << (8 - hi)) >> 3);
-					hi += 5;
-				}
-
-				sb.Append(ValidChars[index]);
-			}
-
-			return sb.ToString();
+			byte[] data1_cs = checksum32bit(data1);
+			byte[] data2_cs = checksum32bit(data2);
+			return BitConverter.GetBytes(BitConverter.ToUInt32(data1_cs, 0) + BitConverter.ToUInt32(data2_cs, 0));
 		}
 
 		public byte[] HexStringToByteArray(string hex)
