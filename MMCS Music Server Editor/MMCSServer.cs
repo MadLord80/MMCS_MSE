@@ -19,6 +19,7 @@ namespace MMCS_MSE
 
 		//Settings
 		public readonly string defALBUM_ID = "0000001";
+		public readonly byte[] defALBUM_delim = new byte[] { 0x05, 0x01, 0x01, 0x04, 0x00, 0x11, 0x00, 0x00 };
 
 		public readonly int NameDesc_length = 0x80;
 		public readonly int NameLocDesc_length = 0x40;
@@ -556,7 +557,7 @@ namespace MMCS_MSE
 				////\x00 - end string
 				//int null_offset = name.IndexOf('\x00');
 				//return (null_offset != -1) ? name.Substring(0, null_offset) : name;
-				return this.artist.Name;
+				return (this.artist != null) ? this.artist.Name : "";
 			}
 			set
 			{

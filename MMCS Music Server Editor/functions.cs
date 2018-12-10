@@ -6,6 +6,22 @@ namespace MMCS_MSE
 {
 	class help_functions
 	{
+		public byte[] checksum32bit(byte[] data)
+		{
+			byte[] cs = new byte[4];
+			int hash = data.GetHashCode();
+			if (data.Length % 4 > 0) { return cs; }
+
+			for (int i = 0; i < data.Length; i += 4)
+			{
+				cs[0] += data[i];
+				cs[1] += data[i + 1];
+				cs[2] += data[i + 2];
+				cs[3] += data[i + 3];
+			}
+			return cs;
+		}
+
 		public byte[] HexStringToByteArray(string hex)
 		{
 			return Enumerable.Range(0, hex.Length)

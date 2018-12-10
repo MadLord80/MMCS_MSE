@@ -1627,7 +1627,8 @@ namespace MMCS_MSE
 		{
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
-				string sc_path = opendir.SelectedPath;
+				//string sc_path = opendir.SelectedPath;
+				string sc_path = "D:\\tmp\\testmusic_oma";
 
 				factTracks.Clear();
 				discs.Clear();
@@ -1806,6 +1807,25 @@ namespace MMCS_MSE
 				// lengths
 				byte[] lengths = new byte[mserver.album_max_lists * mserver.album_length_size];
 				fs.Write(lengths, 0, lengths.Length);
+				// fav list header
+				byte[] fl_header = new byte[mserver.album_list_header_size];
+				new byte[] { 0x01 }.CopyTo(fl_header, 4);
+				new byte[] { 0x01 }.CopyTo(fl_header, 9);
+				mserver.defALBUM_delim.CopyTo(fl_header, 12);
+				new byte[] { 0x1b }.CopyTo(fl_header, 20);
+				Encoding.UTF8.GetBytes("[tbl:174]").CopyTo(fl_header, 21);
+				fs.Write(fl_header, 0, fl_header.Length);
+				//9DA704C2
+				// {byte[4]}
+				byte[] cs = hf.checksum32bit(fl_header);
+				// offen list header
+				byte[] ol_header = new byte[mserver.album_list_header_size];
+				new byte[] { 0x02 }.CopyTo(ol_header, 4);
+				new byte[] { 0x01 }.CopyTo(ol_header, 9);
+				mserver.defALBUM_delim.CopyTo(ol_header, 12);
+				new byte[] { 0x1b }.CopyTo(ol_header, 20);
+				Encoding.UTF8.GetBytes("[tbl:173]").CopyTo(ol_header, 21);
+				fs.Write(ol_header, 0, ol_header.Length);
 			}
 
 			// create DISCID
@@ -1815,6 +1835,7 @@ namespace MMCS_MSE
 			// create ORG_ARRAY
 			// create others (AVVRALBUMARTIST.lst etc.)???
 			// create DATA (copy/move files, add DISCID files)
+			System.Windows.MessageBox.Show("Done!");
 		}
 
 		//class testItem
