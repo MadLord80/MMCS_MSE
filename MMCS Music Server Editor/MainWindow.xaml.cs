@@ -1628,8 +1628,8 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				//string sc_path = opendir.SelectedPath;
-				string sc_path = "D:\\tmp\\testmusic_oma";
-				//string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
+				//string sc_path = "D:\\tmp\\testmusic_oma";
+				string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
 				factTracks.Clear();
 				discs.Clear();
@@ -1670,6 +1670,7 @@ namespace MMCS_MSE
 				// may be use disc name from TITLE.lst?
 				MSDisc disc = new MSDisc(discId, dir.Name);
 				disc.Exists = true;
+				disc.OrigDirFullPath = dir.FullName;
 				int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
 				using (FileStream fs = new FileStream(dir.FullName + "//TITLE.lst", FileMode.Open, FileAccess.Read))
 				{
@@ -1719,6 +1720,7 @@ namespace MMCS_MSE
 				// may be use disc name from TITLE.lst?
 				MSDisc disc = new MSDisc(discId, dir.Name);
 				disc.Exists = true;
+				disc.OrigDirFullPath = dir.FullName;
 				int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
 				using (FileStream fs = new FileStream(dir.FullName + "//TITLE.lst", FileMode.Open, FileAccess.Read))
 				{
@@ -1791,6 +1793,8 @@ namespace MMCS_MSE
 
 		private void CreateServer_Button_Click(object sender, RoutedEventArgs e)
 		{
+			Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+
 			string AVunitDir = mserver.MainDir + "\\AVUNIT";
 			if (Directory.Exists(AVunitDir)) { Directory.Delete(AVunitDir, true); }
 			Directory.CreateDirectory(AVunitDir);
@@ -2014,9 +2018,103 @@ namespace MMCS_MSE
 			}
 
 			// create INDEX
+			using (FileStream fs = new FileStream(mserver.get_INDEXpath(), FileMode.Create, FileAccess.Write))
+			{
+				byte[] header = new byte[mserver.index_header_size];
+				string header_text = "SLJA_INDEX:1.5";
+				Encoding.UTF8.GetBytes(header_text).CopyTo(header, 4);
+				int ld_count = groups.Where((grp) => grp.Id == 0).First().Discs.Count + groups.Where((grp) => grp.Id == 1).First().Lists.Count;
+				new byte[] { (byte)ld_count }.CopyTo(header, 36);
+
+				byte[] groups_data = new byte[mserver.index_max_groups * (mserver.NameDesc_length + 4)];
+				byte[] discs_lists_data = { };
+				foreach (MSGroup group in groups)
+				{
+					byte[] group_data = new byte[mserver.NameDesc_length + 4];
+
+					new byte[] { (byte)group.Id }.CopyTo(group_data, 0);
+					if (group.Id == 0)
+					{
+						new byte[] { 0x1b }.CopyTo(group_data, 4);
+						Encoding.UTF8.GetBytes("[tbl:171]").CopyTo(group_data, 5);
+
+						foreach (MSDisc disc in group.Discs)
+						{
+							byte[] disc_data = new byte[8];
+							hf.HexStringToByteArray(disc.Id.FullId)
+								.Reverse().ToArray()
+								.CopyTo(disc_data, 0);
+							Array.Resize(ref discs_lists_data, discs_lists_data.Length + disc_data.Length);
+							disc_data.CopyTo(discs_lists_data, discs_lists_data.Length - disc_data.Length);
+						}
+					}
+					else if (group.Id == 1)
+					{
+						new byte[] { 0x1b }.CopyTo(group_data, 4);
+						Encoding.UTF8.GetBytes("[tbl:172]").CopyTo(group_data, 5);
+
+						foreach (MSList list in group.Lists)
+						{
+							byte[] list_data = new byte[8];
+							new byte[] { (byte)list.Id }.CopyTo(list_data, 0);
+							new byte[] { 1 }.CopyTo(list_data, 4);
+							new byte[] { (byte)group.Id }.CopyTo(list_data, 7);
+							Array.Resize(ref discs_lists_data, discs_lists_data.Length + list_data.Length);
+							list_data.CopyTo(discs_lists_data, discs_lists_data.Length - list_data.Length);
+						}
+					}
+					else
+					{
+						Encoding.GetEncoding(codePage).GetBytes(group.Name).CopyTo(group_data, 4);
+
+						foreach (MSList list in group.Lists)
+						{
+							byte[] list_data = new byte[8];
+							new byte[] { (byte)list.Id }.CopyTo(list_data, 0);
+							new byte[] { 1 }.CopyTo(list_data, 4);
+							new byte[] { (byte)group.Id }.CopyTo(list_data, 8);
+							Array.Resize(ref discs_lists_data, discs_lists_data.Length + list_data.Length);
+							list_data.CopyTo(discs_lists_data, discs_lists_data.Length - list_data.Length);
+						}
+					}
+					group_data.CopyTo(groups_data, group.Id * group_data.Length);
+				}
+				// empty groups
+				for (int i = 0; i < mserver.index_max_groups - groups.Count; i++)
+				{
+					byte[] group_data = new byte[mserver.NameDesc_length + 4];
+					new byte[] { 0xff, 0, 0, 1}.CopyTo(group_data, 0);
+					group_data.CopyTo(groups_data, (i + groups.Count) * group_data.Length);
+				}
+
+				byte[] checksum1 = hf.checksum32bit(header, groups_data);
+				UInt32 checksum2 = BitConverter.ToUInt32(hf.checksum32bit(checksum1, discs_lists_data), 0);
+				checksum2 += (UInt32)ld_count;
+				BitConverter.GetBytes(checksum2).CopyTo(header, 0);
+
+				fs.Write(header, 0, header.Length);
+				fs.Write(groups_data, 0, groups_data.Length);
+				fs.Write(discs_lists_data, 0, discs_lists_data.Length);
+			}
+
 			// create ORG_ARRAY ???
 			// create others (AVVRALBUMARTIST.lst etc.) ???
+
 			// create DATA (copy/move files, add DISCID files)
+			Directory.CreateDirectory(mserver.MainDir + "\\DATA");
+			// need copy/move input!!!
+			// need copy/move process!!!
+			foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
+			{
+				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
+				DirectoryInfo data_disc_dir = Directory.CreateDirectory(mserver.MainDir + "\\DATA" + "\\DATA" + sDiscId + "\\" + disc.Id.FullId);
+				foreach (FileInfo track in new DirectoryInfo(disc.OrigDirFullPath).GetFiles("???.sc"))
+				{
+					File.Copy(track.FullName, data_disc_dir.FullName + "\\" + track.Name);
+				}
+			}
+
+			Mouse.OverrideCursor = null;
 			System.Windows.MessageBox.Show("Done!");
 		}
 

@@ -489,6 +489,8 @@ namespace MMCS_MSE
 		private List<MSTrack> tracks = new List<MSTrack>();
 		private string errors = "";
 		private bool is_exist = true;
+		//for copy/move files
+		private string orig_dir_full_path;
 		//for report
 		//private byte[] end_desc = new byte[16];
 		//private byte[] st_title = new byte[4];
@@ -500,6 +502,12 @@ namespace MMCS_MSE
 		{
 			get { return this.is_exist; }
 			set { this.is_exist = value; }
+		}
+
+		public string OrigDirFullPath
+		{
+			get { return this.orig_dir_full_path; }
+			set { this.orig_dir_full_path = value; }
 		}
 
 		//public byte[] EndDesc
