@@ -13,6 +13,8 @@ namespace MMCS_MSE
 		private string main_dir;
 		public readonly string INFO_path = "\\INFO";
 		public readonly string ALBUM_path = "\\ALBUM";
+		public readonly string DISCID_path = "\\DISCID";
+		public readonly string RECORD_path = "\\RECORD";
 		public readonly string TITLE_path = "\\TITLE";
 		public readonly string DATA_path = "\\DATA";
 		//private string CUSTOM_path = "\\CUSTOM";		
@@ -50,18 +52,31 @@ namespace MMCS_MSE
 		//public readonly int list_desc_length = 0x194;
 		//public readonly int listName_offset = 0x14;
 		//public readonly int asong_data_length = 16;
+		//DISCID
+		public readonly int discid_header_size = 32;
+		public readonly int discid_datadisc_header_size = 20;
+		public readonly byte[] discid_dataheader_unknown = new byte[] { 0x6a, 0x7e, 0x05, 0x00 };
+		public readonly int discid_datadisc_size = 392;
+		public readonly byte[] discid_datadisc_96 = new byte[] { 0x96, 0x00, 0x00, 0x00 };
+		public readonly byte[] discid_datadisc_offset = new byte[] { 0xa5, 0x3f, 0x00, 0x00 };
+		//RECORD
+		public readonly int record_header_size = 36;
+		public readonly int record_lengths_size = 400;
+		public readonly int record_datadisc_header_size = 16;
+		public readonly int record_datadisc_trackdata_size = 12;
+		public readonly byte[] record_unknown_delim = new byte[] { 0x0a, 0x04, 0x0e, 0x10, 0x0e, 0x24 };
 		//ORG_ARRAY
 		public readonly int org_header_size = 8;
 		public readonly int org_discdata_size = 224;
 		public readonly int org_discs_cnt_offset = 4;
 		public readonly int org_discs_cnt_length = 4;
 		public readonly int org_disc_desc_length = 0xe0;
-		public readonly int discId_offset = 1;
-		public readonly int discId_length = 4;
-		public readonly int discName_offset = 12;
+		//public readonly int discId_offset = 1;
+		//public readonly int discId_length = 4;
+		//public readonly int discName_offset = 12;
 		//public readonly int discName_length = 0x80;
 		//public readonly int discNameLoc_length = 0x40;
-		public readonly int disc_songscnt_length = 4;
+		//public readonly int disc_songscnt_length = 4;
 		//public readonly int disc_enddesc_length = 16;
 		//TITLE
 		//public readonly int title_discid_offset = 19;
@@ -69,6 +84,7 @@ namespace MMCS_MSE
 		public readonly int title_max_lengths = 100;
 		public readonly int title_length_size = 4;
 		public readonly int title_list_header_size = 28;
+		public readonly byte[] title_unknown = new byte[] { 0x09, 0x06, 0x13, 0x09, 0x0a, 0x27 };
 		//public readonly int dtracks_offset;
 		//public readonly int dtId_offset = 4;
 		//public readonly int songs_cnt_offset = 8;

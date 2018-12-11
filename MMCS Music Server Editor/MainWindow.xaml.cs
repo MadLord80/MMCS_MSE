@@ -1628,8 +1628,8 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				//string sc_path = opendir.SelectedPath;
-				//string sc_path = "D:\\tmp\\testmusic_oma";
-				string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
+				string sc_path = "D:\\tmp\\testmusic_oma";
+				//string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
 				factTracks.Clear();
 				discs.Clear();
@@ -1838,11 +1838,184 @@ namespace MMCS_MSE
 			}
 
 			// create DISCID
+			string DISCID_path = mserver.MainDir + mserver.INFO_path + mserver.DISCID_path;
+			Directory.CreateDirectory(DISCID_path);
+			foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
+			{
+				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
+				using (FileStream fs = new FileStream(DISCID_path + "\\DISCID" + sDiscId + ".lst", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+				{
+					if (fs.Length == 0)
+					{
+						byte[] header = new byte[mserver.discid_header_size];
+						string header_text = "SLJA_DISCID:1.3 " + sDiscId;
+						Encoding.UTF8.GetBytes(header_text).CopyTo(header, 0);
+						fs.Write(header, 0, header.Length);
+					}
+					else
+					{
+						fs.Position = fs.Length;
+					}
+
+					byte[] dataDisc_header = new byte[mserver.discid_datadisc_header_size];
+					new byte[] { (byte)disc.Id.Id }.CopyTo(dataDisc_header, 4);
+					new byte[] { (byte)disc.Tracks.Count }.CopyTo(dataDisc_header, 8);
+					mserver.discid_dataheader_unknown.CopyTo(dataDisc_header, 12);
+					mserver.discid_datadisc_96.CopyTo(dataDisc_header, 16);
+
+					byte[] dataDisc = new byte[mserver.discid_datadisc_size];
+					for (int i = 0; i < disc.Tracks.Count - 1; i++)
+					{
+						mserver.discid_datadisc_offset.CopyTo(dataDisc, i * 4);
+					}
+
+					hf.checksum32bit(dataDisc_header, dataDisc).CopyTo(dataDisc_header, 0);
+					// write header
+					fs.Write(dataDisc_header, 0, dataDisc_header.Length);
+					// write data
+					fs.Write(dataDisc, 0, dataDisc.Length);
+				}
+			}
+
 			// create RECORD
+			string RECORD_path = mserver.MainDir + mserver.INFO_path + mserver.RECORD_path;
+			Directory.CreateDirectory(RECORD_path);
+			foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs.OrderBy((dsc) => dsc.Id.Prefix))
+			{
+				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
+				Directory.CreateDirectory(RECORD_path + "\\RECORD" + sDiscId);
+				using (FileStream fs = new FileStream(RECORD_path + "\\RECORD" + sDiscId + "\\RECORD" + sDiscId + "00001.lst", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+				{
+					byte[] header = new byte[mserver.record_header_size];
+					byte[] lengths = new byte[mserver.record_lengths_size];
+					if (fs.Length == 0)
+					{
+						string header_text = "SLJA_RECORD:1.3 " + sDiscId + "00001";
+						Encoding.UTF8.GetBytes(header_text).CopyTo(header, 4);
+					}
+					else
+					{
+						fs.Read(header, 0, header.Length);
+						// for update checksum
+						new byte[] { 0, 0, 0, 0 }.CopyTo(header, 0);
+						fs.Read(lengths, 0, lengths.Length);
+						fs.Position = fs.Length;
+					}
+
+					byte[] data_header = new byte[mserver.record_datadisc_header_size];
+					hf.HexStringToByteArray(disc.Id.FullId)
+						.Reverse().ToArray()
+						.CopyTo(data_header, 4);
+					new byte[] { (byte)disc.Tracks.Count }.CopyTo(data_header, 8);
+					mserver.record_unknown_delim.CopyTo(data_header, 10);
+
+					byte[] tracks_data = new byte[mserver.record_datadisc_trackdata_size * disc.Tracks.Count];
+					byte[] track_data = new byte[mserver.record_datadisc_trackdata_size];
+					new byte[] { 0x01 }.CopyTo(track_data, 0);
+					mserver.record_unknown_delim.CopyTo(track_data, 4);
+					for (int i = 0; i < disc.Tracks.Count; i++)
+					{
+						track_data.CopyTo(tracks_data, i * mserver.record_datadisc_trackdata_size);
+					}
+					hf.checksum32bit(data_header, tracks_data).CopyTo(data_header, 0);
+
+					// update lengths
+					BitConverter.GetBytes(data_header.Length + tracks_data.Length).CopyTo(lengths, 4 * (disc.Id.Prefix - 1));
+					// update header
+					hf.checksum32bit(header, lengths).CopyTo(header, 0);
+					
+					if (fs.Length == 0)
+					{
+						fs.Write(header, 0, header.Length);
+						fs.Write(lengths, 0, lengths.Length);
+						fs.Write(data_header, 0, data_header.Length);
+						fs.Write(tracks_data, 0, tracks_data.Length);
+					}
+					else
+					{
+						fs.Write(data_header, 0, data_header.Length);
+						fs.Write(tracks_data, 0, tracks_data.Length);
+						fs.Position = 0;
+						fs.Write(header, 0, header.Length);
+						fs.Write(lengths, 0, lengths.Length);
+					}
+				}
+			}
+
 			// create TITLE
+			string TITLE_path = mserver.MainDir + mserver.INFO_path + mserver.TITLE_path;
+			Directory.CreateDirectory(TITLE_path);
+			foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs.OrderBy((dsc) => dsc.Id.Prefix))
+			{
+				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
+				Directory.CreateDirectory(TITLE_path + "\\TITLE" + sDiscId);
+				using (FileStream fs = new FileStream(TITLE_path + "\\TITLE" + sDiscId + "\\TITLE" + sDiscId + "00001.lst", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+				{
+					byte[] header = new byte[mserver.title_header_size];
+					byte[] lengths = new byte[mserver.title_length_size * mserver.title_max_lengths];
+					if (fs.Length == 0)
+					{
+						string header_text = "SLJA_TITLE:1.3 " + sDiscId + "00001";
+						Encoding.UTF8.GetBytes(header_text).CopyTo(header, 4);
+					}
+					else
+					{
+						fs.Read(header, 0, header.Length);
+						// for update checksum
+						new byte[] { 0, 0, 0, 0 }.CopyTo(header, 0);
+						fs.Read(lengths, 0, lengths.Length);
+						fs.Position = fs.Length;
+					}
+
+					byte[] disc_header = new byte[mserver.title_list_header_size];
+					hf.HexStringToByteArray(disc.Id.FullId)
+						.Reverse().ToArray()
+						.CopyTo(disc_header, 4);
+					new byte[] { (byte)disc.Tracks.Count, 1 }.CopyTo(disc_header, 8);
+					hf.checksum32bit(disc_header).CopyTo(disc_header, 0);
+					mserver.title_unknown.CopyTo(disc_header, 20);
+
+					byte[] disc_desc = new byte[2 * (mserver.NameDesc_length + mserver.NameLocDesc_length)];
+					Encoding.GetEncoding(codePage).GetBytes(disc.Name).CopyTo(disc_desc, 0);
+					Encoding.GetEncoding(codePage).GetBytes(disc.Artist).CopyTo(disc_desc, mserver.NameDesc_length + mserver.NameLocDesc_length);
+
+					byte[] tracks_descs = new byte[disc.Tracks.Count * disc_desc.Length];
+					foreach (MSTrack track in disc.Tracks.OrderBy((trk) => trk.Id))
+					{
+						Encoding.GetEncoding(codePage).GetBytes(track.Name).CopyTo(tracks_descs, (track.Id - 1) * disc_desc.Length);
+						Encoding.GetEncoding(codePage).GetBytes(track.Artist).CopyTo(tracks_descs, (track.Id - 1) * disc_desc.Length + mserver.NameDesc_length + mserver.NameLocDesc_length);
+					}
+					byte[] disc_cs = hf.checksum32bit(disc_desc, tracks_descs);
+					hf.checksum32bit(disc_cs, new ArraySegment<byte>(disc_header, 20, 8).ToArray()).CopyTo(disc_header, 16);
+
+					// update lengths
+					BitConverter.GetBytes(disc_header.Length + disc_desc.Length + tracks_descs.Length).CopyTo(lengths, 4 * (disc.Id.Prefix - 1));
+					// update header
+					hf.checksum32bit(header, lengths).CopyTo(header, 0);
+
+					if (fs.Length == 0)
+					{
+						fs.Write(header, 0, header.Length);
+						fs.Write(lengths, 0, lengths.Length);
+						fs.Write(disc_header, 0, disc_header.Length);
+						fs.Write(disc_desc, 0, disc_desc.Length);
+						fs.Write(tracks_descs, 0, tracks_descs.Length);
+					}
+					else
+					{
+						fs.Write(disc_header, 0, disc_header.Length);
+						fs.Write(disc_desc, 0, disc_desc.Length);
+						fs.Write(tracks_descs, 0, tracks_descs.Length);
+						fs.Position = 0;
+						fs.Write(header, 0, header.Length);
+						fs.Write(lengths, 0, lengths.Length);
+					}
+				}
+			}
+
 			// create INDEX
-			// create ORG_ARRAY
-			// create others (AVVRALBUMARTIST.lst etc.)???
+			// create ORG_ARRAY ???
+			// create others (AVVRALBUMARTIST.lst etc.) ???
 			// create DATA (copy/move files, add DISCID files)
 			System.Windows.MessageBox.Show("Done!");
 		}
