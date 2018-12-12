@@ -388,10 +388,12 @@ namespace MMCS_MSE
 						new ArraySegment<byte>(list_header, 20, mserver.NameDesc_length).ToArray()
 					);
 
-					byte[] tc = new ArraySegment<byte>(list_header, 9, 4).ToArray();
+					//byte[] tc = new ArraySegment<byte>(list_header, 9, 4).ToArray();
 					// BitConverter.ToInt32 need 4 bytes
-					tc[3] = 0;
-					int tracks_count = BitConverter.ToInt32(tc, 0);
+					//tc[3] = 0;
+					// tracks_count - 1 byte!
+					//int tracks_count = BitConverter.ToInt32(tc, 0);
+					int tracks_count = list_header[8];
 					for (int k = 0; k < tracks_count; k++)
 					{
 						byte[] track_data = new byte[mserver.album_track_data_size];
