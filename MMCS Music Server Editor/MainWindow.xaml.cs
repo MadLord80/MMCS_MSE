@@ -388,12 +388,12 @@ namespace MMCS_MSE
 						new ArraySegment<byte>(list_header, 20, mserver.NameDesc_length).ToArray()
 					);
 
-					//byte[] tc = new ArraySegment<byte>(list_header, 9, 4).ToArray();
+					byte[] tc = new ArraySegment<byte>(list_header, 9, 4).ToArray();
 					// BitConverter.ToInt32 need 4 bytes
-					//tc[3] = 0;
+					tc[3] = 0;
 					// tracks_count - 1 byte!
-					//int tracks_count = BitConverter.ToInt32(tc, 0);
-					int tracks_count = list_header[8];
+					int tracks_count = BitConverter.ToInt32(tc, 0);
+					//int tracks_count = list_header[8];
 					for (int k = 0; k < tracks_count; k++)
 					{
 						byte[] track_data = new byte[mserver.album_track_data_size];
@@ -1635,8 +1635,8 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				//string sc_path = opendir.SelectedPath;
-				string sc_path = "D:\\tmp\\testmusic_oma";
-				//string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
+				//string sc_path = "D:\\tmp\\testmusic_oma";
+				string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
 				factTracks.Clear();
 				discs.Clear();
@@ -1820,7 +1820,7 @@ namespace MMCS_MSE
 				// fav list header
 				byte[] fl_header = new byte[mserver.album_list_header_size];
 				new byte[] { 0x01 }.CopyTo(fl_header, 4);
-				new byte[] { 0x01 }.CopyTo(fl_header, 9);
+				//new byte[] { 0x01 }.CopyTo(fl_header, 9);
 				mserver.defALBUM_delim.CopyTo(fl_header, 12);
 				new byte[] { 0x1b }.CopyTo(fl_header, 20);
 				Encoding.UTF8.GetBytes("[tbl:174]").CopyTo(fl_header, 21);
@@ -1828,7 +1828,7 @@ namespace MMCS_MSE
 				// offen list header
 				byte[] ol_header = new byte[mserver.album_list_header_size];
 				new byte[] { 0x02 }.CopyTo(ol_header, 4);
-				new byte[] { 0x01 }.CopyTo(ol_header, 9);
+				//new byte[] { 0x01 }.CopyTo(ol_header, 9);
 				mserver.defALBUM_delim.CopyTo(ol_header, 12);
 				new byte[] { 0x1b }.CopyTo(ol_header, 20);
 				Encoding.UTF8.GetBytes("[tbl:173]").CopyTo(ol_header, 21);
@@ -1869,7 +1869,9 @@ namespace MMCS_MSE
 					}
 
 					byte[] dataDisc_header = new byte[mserver.discid_datadisc_header_size];
-					new byte[] { (byte)disc.Id.Id }.CopyTo(dataDisc_header, 4);
+					hf.HexStringToByteArray(disc.Id.FullId)
+						.Reverse().ToArray()
+						.CopyTo(dataDisc_header, 4);
 					new byte[] { (byte)disc.Tracks.Count }.CopyTo(dataDisc_header, 8);
 					mserver.discid_dataheader_unknown.CopyTo(dataDisc_header, 12);
 					mserver.discid_datadisc_96.CopyTo(dataDisc_header, 16);
@@ -2117,7 +2119,9 @@ namespace MMCS_MSE
 				foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
 				{
 					byte[] disc_data = new byte[mserver.org_discdata_size];
-					hf.HexStringToByteArray(disc.Id.FullId).CopyTo(disc_data, 1);
+					hf.HexStringToByteArray(disc.Id.FullId)
+						.Reverse().ToArray()
+						.CopyTo(disc_data, 1);
 					Encoding.GetEncoding(codePage).GetBytes(disc.Name).CopyTo(disc_data, 12);
 					new byte[] { (byte)disc.Tracks.Count }.CopyTo(disc_data, 204);
 					mserver.org_unknown_end.CopyTo(disc_data, 208);
