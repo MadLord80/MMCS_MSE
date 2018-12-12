@@ -530,7 +530,7 @@ namespace MMCS_MSE
 					return;
 				}
 
-				byte[] disc_desc = new byte[mserver.org_disc_desc_length];
+				byte[] disc_desc = new byte[mserver.org_discdata_size];
 				for (int i = 0; i < discs_count; i++)
 				{
 					fs.Read(disc_desc, 0, disc_desc.Length);
@@ -2102,7 +2102,27 @@ namespace MMCS_MSE
 				fs.Write(discs_lists_data, 0, discs_lists_data.Length);
 			}
 
-			// create ORG_ARRAY ???
+			// create ORG_ARRAY
+			using (FileStream fs = new FileStream(mserver.get_ORGpath(), FileMode.Create, FileAccess.Write))
+			{
+				byte[] header = new byte[mserver.org_header_size];
+				string header_text = "DATE";
+				int discsCount = groups.Where((grp) => grp.Id == 0).First().Discs.Count;
+				Encoding.UTF8.GetBytes(header_text).CopyTo(header, 0);
+				new byte[] { (byte)discsCount }.CopyTo(header, 4);
+				fs.Write(header, 0, header.Length);
+
+				foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
+				{
+					byte[] disc_data = new byte[mserver.org_discdata_size];
+					hf.HexStringToByteArray(disc.Id.FullId).CopyTo(disc_data, 1);
+					Encoding.GetEncoding(codePage).GetBytes(disc.Name).CopyTo(disc_data, 12);
+					new byte[] { (byte)disc.Tracks.Count }.CopyTo(disc_data, 204);
+					mserver.org_unknown_end.CopyTo(disc_data, 208);
+					fs.Write(disc_data, 0, disc_data.Length);
+				}
+			}
+
 			// create others (AVVRALBUMARTIST.lst etc.) ???
 
 			// create DATA (copy/move files, add DISCID files)

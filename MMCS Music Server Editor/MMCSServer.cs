@@ -70,7 +70,8 @@ namespace MMCS_MSE
 		public readonly int org_discdata_size = 224;
 		public readonly int org_discs_cnt_offset = 4;
 		public readonly int org_discs_cnt_length = 4;
-		public readonly int org_disc_desc_length = 0xe0;
+		public readonly byte[] org_unknown_end = new byte[] { 0xff, 0xff, 0x07 };
+		//public readonly int org_disc_desc_length = 0xe0;
 		//public readonly int discId_offset = 1;
 		//public readonly int discId_length = 4;
 		//public readonly int discName_offset = 12;
