@@ -18,6 +18,8 @@ namespace MMCS_MSE
 	/// <summary>
 	/// Логика взаимодействия для MainWindow.xaml
 	/// </summary>
+	delegate void UpdateProgressBarDelegate(DependencyProperty dp, object value);
+
 	public partial class MainWindow : Window
 	{
 		private FolderBrowserDialog opendir = new FolderBrowserDialog();
@@ -34,6 +36,8 @@ namespace MMCS_MSE
 		private Dictionary<ElenmentId, List<int>> factTracks = new Dictionary<ElenmentId, List<int>>();
 
 		private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
+
+		System.ComponentModel.BackgroundWorker copyMoveworker;
 
 		internal string CodePage
 		{
@@ -77,6 +81,7 @@ namespace MMCS_MSE
 			copyTrackButton.Click += new RoutedEventHandler(on_copyTrack);
 
 			createServer_Button.Visibility = Visibility.Hidden;
+			copyMoveProgress.Visibility = Visibility.Hidden;
 		}
 
 		private void hideButtons(bool hide)
@@ -1628,8 +1633,8 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				//string sc_path = opendir.SelectedPath;
-				//string sc_path = "D:\\tmp\\testmusic_oma";
-				string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
+				string sc_path = "D:\\tmp\\testmusic_oma";
+				//string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
 				factTracks.Clear();
 				discs.Clear();
@@ -2102,20 +2107,84 @@ namespace MMCS_MSE
 
 			// create DATA (copy/move files, add DISCID files)
 			Directory.CreateDirectory(mserver.MainDir + "\\DATA");
-			// need copy/move input!!!
 			// need copy/move process!!!
+			copyMoveProgress.Visibility = Visibility.Visible;
+			int tracksCount = groups.Where((grp) => grp.Id == 0).First().Discs.Sum((dsc) => dsc.Tracks.Count);
+			copyMoveProgress.Maximum = tracksCount;
+			copyMoveProgress.Value = 0;
+			// need copy/move input!!!
+			MessageBoxResult copy_move_select = System.Windows.MessageBox.Show(
+				"Copy track files to DATA directory or move? (Press 'Yes' to copy)",
+				"Create DATA directory",
+				MessageBoxButton.YesNo,
+				MessageBoxImage.Warning
+			);
+			copyMoveworker = new System.ComponentModel.BackgroundWorker();
+			copyMoveworker.DoWork += new System.ComponentModel.DoWorkEventHandler(copyMoveWork);
+			copyMoveworker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(copyMoveWorkComplete);
+			copyMoveworker.RunWorkerAsync(copy_move_select == MessageBoxResult.Yes);
+		}
+
+		private void copyMoveWork(object sender, System.ComponentModel.DoWorkEventArgs arg)
+		{
+			copyMoveTracks2Server((bool)arg.Argument);
+		}
+
+		private void copyMoveWorkComplete(object sender, System.ComponentModel.RunWorkerCompletedEventArgs arg)
+		{
+			Mouse.OverrideCursor = null;
+			System.Windows.MessageBox.Show("Done!");
+			copyMoveProgress.Visibility = Visibility.Hidden;
+		}
+
+		private void copyMoveTracks2Server(bool toCopy)
+		{
+			UpdateProgressBarDelegate updProgress = new UpdateProgressBarDelegate(copyMoveProgress.SetValue);
+			double value = 0;
 			foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
 			{
 				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
 				DirectoryInfo data_disc_dir = Directory.CreateDirectory(mserver.MainDir + "\\DATA" + "\\DATA" + sDiscId + "\\" + disc.Id.FullId);
 				foreach (FileInfo track in new DirectoryInfo(disc.OrigDirFullPath).GetFiles("???.sc"))
 				{
-					File.Copy(track.FullName, data_disc_dir.FullName + "\\" + track.Name);
+					if (toCopy)
+					{
+						File.Copy(track.FullName, data_disc_dir.FullName + "\\" + track.Name);
+					}
+					else
+					{
+						File.Move(track.FullName, data_disc_dir.FullName + "\\" + track.Name);
+					}
+					
+					Dispatcher.Invoke(updProgress, new object[] { System.Windows.Controls.ProgressBar.ValueProperty, ++value });
+				}
+				using (FileStream fs = new FileStream(data_disc_dir.FullName + "\\" + disc.Id.FullId + "DISCID.lst", FileMode.Create, FileAccess.Write))
+				{
+					byte[] header = new byte[mserver.discid_header_size];
+					string header_text = "SLJA_DISCID:1.3 " + sDiscId;
+					Encoding.UTF8.GetBytes(header_text).CopyTo(header, 0);
+					fs.Write(header, 0, header.Length);
+
+					byte[] dataDisc_header = new byte[mserver.discid_datadisc_header_size];
+					new byte[] { (byte)disc.Id.Id }.CopyTo(dataDisc_header, 4);
+					new byte[] { (byte)disc.Tracks.Count }.CopyTo(dataDisc_header, 8);
+					mserver.discid_dataheader_unknown.CopyTo(dataDisc_header, 12);
+					mserver.discid_datadisc_96.CopyTo(dataDisc_header, 16);
+
+					byte[] dataDisc = new byte[mserver.discid_datadisc_size];
+					for (int i = 0; i < disc.Tracks.Count - 1; i++)
+					{
+						mserver.discid_datadisc_offset.CopyTo(dataDisc, i * 4);
+					}
+
+					// no need checksum
+					//hf.checksum32bit(dataDisc_header, dataDisc).CopyTo(dataDisc_header, 0);
+					// write header
+					fs.Write(dataDisc_header, 0, dataDisc_header.Length);
+					// write data
+					fs.Write(dataDisc, 0, dataDisc.Length);
 				}
 			}
-
-			Mouse.OverrideCursor = null;
-			System.Windows.MessageBox.Show("Done!");
 		}
 
 		//class testItem
