@@ -1635,13 +1635,14 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				//string sc_path = opendir.SelectedPath;
-				//string sc_path = "D:\\tmp\\testmusic_oma";
-				string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
+				string sc_path = "D:\\tmp\\testmusic_oma";
+				//string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
 				factTracks.Clear();
 				discs.Clear();
 				lists.Clear();
 				groups.Clear();
+				clearLDTTables();
 
 				List<MSDisc> origDiscs = createDirTracksFromDir(sc_path);
 				if (origDiscs.Count == 0)
@@ -1651,6 +1652,8 @@ namespace MMCS_MSE
 				}
 				createDefaultGroups(origDiscs);
 				GroupsListView.Items.Refresh();
+				listViewTemplate.Items.Refresh();
+				TrackslistView.Items.Refresh();
 				mserver.MainDir = sc_path;
 				createServer_Button.Visibility = Visibility.Visible;
 			}
@@ -1820,7 +1823,7 @@ namespace MMCS_MSE
 				// fav list header
 				byte[] fl_header = new byte[mserver.album_list_header_size];
 				new byte[] { 0x01 }.CopyTo(fl_header, 4);
-				//new byte[] { 0x01 }.CopyTo(fl_header, 9);
+				new byte[] { 0x01 }.CopyTo(fl_header, 8);
 				mserver.defALBUM_delim.CopyTo(fl_header, 12);
 				new byte[] { 0x1b }.CopyTo(fl_header, 20);
 				Encoding.UTF8.GetBytes("[tbl:174]").CopyTo(fl_header, 21);
@@ -1828,7 +1831,7 @@ namespace MMCS_MSE
 				// offen list header
 				byte[] ol_header = new byte[mserver.album_list_header_size];
 				new byte[] { 0x02 }.CopyTo(ol_header, 4);
-				//new byte[] { 0x01 }.CopyTo(ol_header, 9);
+				new byte[] { 0x01 }.CopyTo(ol_header, 8);
 				mserver.defALBUM_delim.CopyTo(ol_header, 12);
 				new byte[] { 0x1b }.CopyTo(ol_header, 20);
 				Encoding.UTF8.GetBytes("[tbl:173]").CopyTo(ol_header, 21);
