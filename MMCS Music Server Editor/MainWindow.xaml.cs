@@ -89,6 +89,13 @@ namespace MMCS_MSE
 			hideButtons(true);
 			reportButton.Visibility = Visibility.Hidden;
 			testButton.Visibility = Visibility.Hidden;
+
+			delGroupButton.IsEnabled = false;
+			addGroupButton.IsEnabled = false;
+			delButtonTemplate.IsEnabled = false;
+			addButtonTemplate.IsEnabled = false;
+			delTrackButton.IsEnabled = false;
+			addTrackButton.IsEnabled = false;
 #endif
 		}
 
@@ -774,6 +781,8 @@ namespace MMCS_MSE
 				TrackslistView.ItemsSource = list.Tracks;
 				copyTrackButton.ToolTip = "Copy DiscId: Name-Artist to clipboard";
 			}
+
+			if (TrackslistView.Items.Count > 0) { changeNATrackButton.IsEnabled = true; }
 		}
 
 		private void on_editList(object sender, RoutedEventArgs args)
@@ -1042,7 +1051,9 @@ namespace MMCS_MSE
 			//TrackslistView.Items.Refresh();
 			System.Windows.Data.CollectionViewSource.GetDefaultView(TrackslistView.ItemsSource).Refresh();
 
+#if DEBUG
 			saveFButton.IsEnabled = true;
+#endif
 		}
 
 		private void on_delTrack(object sender, RoutedEventArgs args)
@@ -1095,6 +1106,7 @@ namespace MMCS_MSE
 		{
 			if (GroupsListView.SelectedItem == null) return;
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
+			changeNATrackButton.IsEnabled = false;
 			if (group.Id == 0)
 			{
 				fill_disks_table();
@@ -1203,7 +1215,9 @@ namespace MMCS_MSE
 			//ngroup.Added = true;
 			groups.Add(ngroup);
 
+#if DEBUG
 			saveFButton.IsEnabled = true;
+#endif
 		}
 
 		private void delGroupButton_Click(object sender, RoutedEventArgs e)
@@ -1219,7 +1233,9 @@ namespace MMCS_MSE
 			//}
 			System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource).Refresh();
 
+#if DEBUG
 			saveFButton.IsEnabled = true;
+#endif
 		}
 
 		private void listViewTemplate_onclick(object sender, MouseButtonEventArgs e)
@@ -1260,8 +1276,8 @@ namespace MMCS_MSE
 		{
 			bool tButtons = (listViewTemplate.SelectedItem == null) ? false : true;
 			bool ldButtons = (GroupsListView.SelectedItem == null) ? false : true;
-			triggerLDButtons(ldButtons);
-			triggerTButtons(tButtons);
+			//triggerLDButtons(ldButtons);
+			//triggerTButtons(tButtons);
 		}
 
 		private void saveGroupsButton_Click(object sender, RoutedEventArgs e)
@@ -1646,8 +1662,8 @@ namespace MMCS_MSE
 		{
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
-				//string sc_path = opendir.SelectedPath;
-				string sc_path = "D:\\tmp\\testmusic_oma";
+				string sc_path = opendir.SelectedPath;
+				//string sc_path = "D:\\tmp\\testmusic_oma";
 				//string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
 				factTracks.Clear();
@@ -2164,6 +2180,7 @@ namespace MMCS_MSE
 			copyMoveworker.DoWork += new System.ComponentModel.DoWorkEventHandler(copyMoveWork);
 			copyMoveworker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(copyMoveWorkComplete);
 			copyMoveworker.RunWorkerAsync(copy_move_select == MessageBoxResult.Yes);
+			createServer_Button.IsEnabled = false;
 		}
 
 		private void copyMoveWork(object sender, System.ComponentModel.DoWorkEventArgs arg)
@@ -2226,6 +2243,19 @@ namespace MMCS_MSE
 					fs.Write(dataDisc, 0, dataDisc.Length);
 				}
 			}
+		}
+
+		private void ChangeNATrackButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (TrackslistView.SelectedItem == null) { return; }
+
+			MSTrack track = (TrackslistView.SelectedItem as MSTrack);
+			string Artist = track.Artist;
+			track.Artist = track.Name;
+			track.Name = Artist;
+
+			TrackslistView.Items.Refresh();
+			listViewTemplate.Items.Refresh();
 		}
 
 		//class testItem

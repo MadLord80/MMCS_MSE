@@ -81,19 +81,24 @@
                 <Image Source="Images/copy.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="editTrackButton" HorizontalAlignment="Left" Margin="1131,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
+        <Button x:Name="editTrackButton" HorizontalAlignment="Left" Margin="1104,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Edit" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/edit.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="delTrackButton" HorizontalAlignment="Left" Margin="1165,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Delete" IsEnabled="False">
+        <Button x:Name="delTrackButton" HorizontalAlignment="Left" Margin="1138,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Delete" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/remove.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
-        <Button x:Name="addTrackButton" HorizontalAlignment="Left" Margin="1199,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Add" IsEnabled="False">
+        <Button x:Name="addTrackButton" HorizontalAlignment="Left" Margin="1172,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Add" IsEnabled="False">
             <StackPanel>
                 <Image Source="Images/add.png" Stretch="UniformToFill" Height="20" Width="20"/>
+            </StackPanel>
+        </Button>
+        <Button x:Name="changeNATrackButton" HorizontalAlignment="Left" Margin="1203,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="Change Name &lt;-&gt; Artist" IsEnabled="False" Click="ChangeNATrackButton_Click">
+            <StackPanel>
+                <Image Source="Images/change.png" Stretch="UniformToFill" Height="20" Width="20"/>
             </StackPanel>
         </Button>
         <Button x:Name="copyTrackButton" HorizontalAlignment="Left" Margin="1233,63,0,0" VerticalAlignment="Top" Width="25" Height="25" ToolTip="" IsEnabled="False">
