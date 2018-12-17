@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("MMCS Music Server Editor")]
-[assembly: AssemblyCopyright("MadLord, 2017")]
+[assembly: AssemblyCopyright("MadLord, 2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

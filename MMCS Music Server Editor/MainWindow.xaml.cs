@@ -55,6 +55,8 @@ namespace MMCS_MSE
 		{
 			InitializeComponent();
 
+			this.Title = "MMCS Music Server Editor v." + System.Windows.Forms.Application.ProductVersion;
+
 			GridView lview = new GridView();
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 30, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Name", Width = 273, DisplayMemberBinding = new System.Windows.Data.Binding("Name") });
@@ -82,6 +84,12 @@ namespace MMCS_MSE
 
 			createServer_Button.Visibility = Visibility.Hidden;
 			copyMoveProgress.Visibility = Visibility.Hidden;
+
+#if !DEBUG
+			hideButtons(true);
+			reportButton.Visibility = Visibility.Hidden;
+			testButton.Visibility = Visibility.Hidden;
+#endif
 		}
 
 		private void hideButtons(bool hide)
@@ -99,6 +107,10 @@ namespace MMCS_MSE
 			radioButton_Copy8.Visibility = vis;
 			radioButton_Copy9.Visibility = vis;
 			radioButton_Copy10.Visibility = vis;
+			radioButton_Copy11.Visibility = vis;
+			radioButton_Copy12.Visibility = vis;
+			radioButton_Copy13.Visibility = vis;
+			radioButton_Copy14.Visibility = vis;
 		}
 
 		private void triggerLDButtons(bool onoff)
