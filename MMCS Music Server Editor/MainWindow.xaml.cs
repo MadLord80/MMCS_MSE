@@ -233,21 +233,25 @@ namespace MMCS_MSE
 				{
 					byte[] group_data = new byte[4 + mserver.NameDesc_length];
 					fs.Read(group_data, 0, group_data.Length);
-					int groupId = BitConverter.ToInt32(new ArraySegment<byte>(group_data, 0, 4).ToArray(), 0);
-					if (groupId != i && groupId != 0x010000ff)
-					{
-						string groupName = new TrackDiscDesc(new ArraySegment<byte>(group_data, 4, mserver.NameDesc_length).ToArray()).Name;
-						System.Windows.MessageBox.Show(groupId + ": fail group id for group " + groupName + "!");
-						return;
-					}
-					if (groupId == 0x010000ff)
+                    //int groupId = BitConverter.ToInt32(new ArraySegment<byte>(group_data, 0, 4).ToArray(), 0);
+                    int groupId = (group_data[0] == 0xff)
+                        ? BitConverter.ToInt32(new ArraySegment<byte>(group_data, 0, 4).ToArray(), 0)
+                        : (int)group_data[0];
+                    if (groupId != i && groupId != 0x010000ff)
+                    {
+                        string groupName = new TrackDiscDesc(new ArraySegment<byte>(group_data, 4, mserver.NameDesc_length).ToArray()).Name;
+                        System.Windows.MessageBox.Show(groupId + ": fail group id for group " + groupName + "!");
+                        return;
+                    }
+                    if (groupId == 0x010000ff)
 					{
 						fs.Position += (mserver.index_max_groups - i - 1) * group_data.Length;
 						break;
 					}
 
 					groups.Add(new MSGroup(
-						new ArraySegment<byte>(group_data, 0, 4).ToArray(),
+						//new ArraySegment<byte>(group_data, 0, 4).ToArray(),
+                        new byte[] {group_data[0], 0, 0, 0}, 
 						new ArraySegment<byte>(group_data, 4, mserver.NameDesc_length).ToArray()
 					));
 				}
