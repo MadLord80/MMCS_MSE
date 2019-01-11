@@ -1,8 +1,10 @@
 # MMCS_MSE
 
 TODO:
-1. change Cyrillic to English / Cyrillic
-2. fix group id
-3. rename tracks
-4. add dir
-5. add track
+- change Cyrillic to English / Cyrillic
+- fix group id
+- chack create server with ShiftJS encoding
+- rename tracks
+- add dir
+- add track
+- play track with some media player
