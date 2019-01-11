@@ -3,7 +3,7 @@
 TODO:
 - change Cyrillic to English / Cyrillic
 - fix group id
-- chack create server with ShiftJS encoding
+- check create server with ShiftJS encoding
 - rename tracks
 - add dir
 - add track
