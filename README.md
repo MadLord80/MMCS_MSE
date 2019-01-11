@@ -10,4 +10,4 @@ TODO:
 - convert encoding: ISO <-> ShiftJIS
 - max tracks in list? max discs (5900)?
 - play track with some media player
-- export discs with tracks
+- export discs with tracks ot tracks like "001_TRACK_NAME.sc"
