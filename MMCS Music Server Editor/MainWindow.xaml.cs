@@ -82,7 +82,8 @@ namespace MMCS_MSE
 			addTrackButton.Click += new RoutedEventHandler(on_addTrack);
 			copyTrackButton.Click += new RoutedEventHandler(on_copyTrack);
 
-			createServer_Button.Visibility = Visibility.Hidden;
+            saveFButton.Visibility = Visibility.Hidden;
+            createServer_Button.Visibility = Visibility.Hidden;
 			copyMoveProgress.Visibility = Visibility.Hidden;
 
 #if !DEBUG
@@ -144,19 +145,26 @@ namespace MMCS_MSE
 			}
 		}
 
-		private void initServer(string path)
-		{
-			clearLDTTables();
+        private void clearCurrentData()
+        {
+            factTracks.Clear();
+            discs.Clear();
+            lists.Clear();
+            groups.Clear();
+            clearLDTTables();
             triggerLDButtons(false);
-            createServer_Button.IsEnabled = false;
+            triggerTButtons(false);
+
+            createServer_Button.Visibility = Visibility.Hidden;
+        }
+
+        private void initServer(string path)
+		{
+            clearCurrentData();
 
             mserver.MainDir = path;
-			factTracks.Clear();
-			discs.Clear();
-			lists.Clear();
-			groups.Clear();
 
-			fill_fact_tracks();
+            fill_fact_tracks();
 			fill_discs_array();
 			fill_discs_tracks();
 			fill_lists_array();
@@ -548,6 +556,8 @@ namespace MMCS_MSE
 				copyTrackButton.ToolTip = "Copy Name-Artist to clipboard";
 				System.Windows.Data.CollectionView tview = (System.Windows.Data.CollectionView)System.Windows.Data.CollectionViewSource.GetDefaultView(TrackslistView.ItemsSource);
 				tview.Filter = hiddenItems;
+
+                editTrackButton.IsEnabled = true;
 			}
 			else
 			{
@@ -1077,10 +1087,37 @@ namespace MMCS_MSE
 
 			GroupsListView.Items.Refresh();
 			saveGroupsButton.IsEnabled = false;
-			//if (groups.Where(g => g.NameChanged == true).ToList().Count > 0) saveFButton.IsEnabled = true;
-		}
+            updateINDEXlst();
+            //if (groups.Where(g => g.NameChanged == true).ToList().Count > 0) saveFButton.IsEnabled = true;
+        }
 
-		private void saveLDButton_Click(object sender, RoutedEventArgs e)
+        // update names of groups
+        private void updateINDEXlst()
+        {
+            if (groups.Count > 2)
+            {
+                string info_path = mserver.get_INDEXpath();
+                if (!File.Exists(info_path))
+                {
+                    System.Windows.MessageBox.Show(info_path + " not found!");
+                    return;
+                }
+
+                using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
+                {
+                    foreach (MSGroup group in groups)
+                    {
+                        if (group.Id < 2) { continue; }
+
+                        fs.Position = mserver.index_header_size + group.Id * (4 + mserver.NameDesc_length) + 4;
+                        byte[] g_name = Encoding.GetEncoding(codePage).GetBytes(group.Name);
+                        fs.Write(g_name, 0, g_name.Length);
+                    }
+                }
+            }
+        }
+
+        private void saveLDButton_Click(object sender, RoutedEventArgs e)
 		{
 			GridView gv = (listViewTemplate.View as GridView);
 			if (gv == null || gv.Columns.Count == 0) return;
@@ -1452,15 +1489,10 @@ namespace MMCS_MSE
 			if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
 			{
 				string sc_path = opendir.SelectedPath;
-				//string sc_path = "D:\\tmp\\testmusic_oma";
-				//string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
+                //string sc_path = "D:\\tmp\\testmusic_oma";
+                //string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
 
-				factTracks.Clear();
-				discs.Clear();
-				lists.Clear();
-				groups.Clear();
-				clearLDTTables();
-                triggerLDButtons(false);
+                clearCurrentData();
 
 				List<MSDisc> origDiscs = createDirTracksFromDir(sc_path);
 				if (origDiscs.Count == 0)
