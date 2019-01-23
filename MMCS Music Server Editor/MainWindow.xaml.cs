@@ -55,7 +55,8 @@ namespace MMCS_MSE
 		{
 			InitializeComponent();
 
-			this.Title = "MMCS Music Server Editor v." + System.Windows.Forms.Application.ProductVersion;
+            string version = System.Windows.Forms.Application.ProductVersion;
+            this.Title = "MMCS Music Server Editor v." + version.Remove(version.Length - 2);
 
 			GridView lview = new GridView();
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 30, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
@@ -86,55 +87,72 @@ namespace MMCS_MSE
             createServer_Button.Visibility = Visibility.Hidden;
 			copyMoveProgress.Visibility = Visibility.Hidden;
 
+            editButtonTemplate.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            delButtonTemplate.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            addButtonTemplate.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            copyButtonTemplate.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+
+            editTrackButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            delTrackButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            addTrackButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            copyTrackButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+
+            editGroupButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            delGroupButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            addGroupButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+            copyGroupButton.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
+
 #if !DEBUG
-			hideButtons(true);
+            hideButtons(true);
 			reportButton.Visibility = Visibility.Hidden;
 			testButton.Visibility = Visibility.Hidden;
 
-			delGroupButton.IsEnabled = false;
-			addGroupButton.IsEnabled = false;
-			delButtonTemplate.IsEnabled = false;
-			addButtonTemplate.IsEnabled = false;
-			delTrackButton.IsEnabled = false;
-			addTrackButton.IsEnabled = false;
+            triggerGButtons(false);
+            triggerLDButtons(false);
+            triggerTButtons(false);
+            //delGroupButton.IsEnabled = false;
+            //addGroupButton.IsEnabled = false;
+            //delButtonTemplate.IsEnabled = false;
+            //addButtonTemplate.IsEnabled = false;
+            //delTrackButton.IsEnabled = false;
+            //addTrackButton.IsEnabled = false;
 #endif
-		}
+        }
+               
+        private void checkCodePageForIsEnabled(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            System.Windows.Controls.Button button = (sender as System.Windows.Controls.Button);
+            if (codePage == "shift_jis") { button.IsEnabled = false; }
+            if ((button.Name == "editGroupButton" || button.Name == "delGroupButton" || button.Name == "copyGroupButton") 
+                && groups.Count < 3)
+            {
+                button.IsEnabled = false;
+            }
+        }
 
-		private void hideButtons(bool hide)
-		{
-			Visibility vis = (hide) ? Visibility.Hidden : Visibility.Visible;
-			radioButton.Visibility = vis;
-			radioButton_Copy.Visibility = vis;
-			radioButton_Copy1.Visibility = vis;
-			radioButton_Copy2.Visibility = vis;
-			radioButton_Copy3.Visibility = vis;
-			radioButton_Copy4.Visibility = vis;
-			radioButton_Copy5.Visibility = vis;
-			radioButton_Copy6.Visibility = vis;
-			radioButton_Copy7.Visibility = vis;
-			radioButton_Copy8.Visibility = vis;
-			radioButton_Copy9.Visibility = vis;
-			radioButton_Copy10.Visibility = vis;
-			radioButton_Copy11.Visibility = vis;
-			radioButton_Copy12.Visibility = vis;
-			radioButton_Copy13.Visibility = vis;
-			radioButton_Copy14.Visibility = vis;
-		}
-
-		private void triggerLDButtons(bool onoff)
-		{
-			editButtonTemplate.IsEnabled = onoff;
+        private void triggerLDButtons(bool onoff)
+        {
+            editButtonTemplate.IsEnabled = onoff;
 			delButtonTemplate.IsEnabled = onoff;
 			addButtonTemplate.IsEnabled = onoff;
 			copyButtonTemplate.IsEnabled = onoff;
-		}
-		private void triggerTButtons(bool onoff)
-		{
-			editTrackButton.IsEnabled = onoff;
+        }
+
+        private void triggerTButtons(bool onoff)
+        {
+            editTrackButton.IsEnabled = onoff;
 			delTrackButton.IsEnabled = onoff;
 			addTrackButton.IsEnabled = onoff;
 			copyTrackButton.IsEnabled = onoff;
-		}
+        }
+        private void triggerGButtons(bool onoff)
+        {
+            //editGroupButton.ev
+            editGroupButton.IsEnabled = onoff;
+            delGroupButton.IsEnabled = onoff;
+            addGroupButton.IsEnabled = onoff;
+            copyGroupButton.IsEnabled = onoff;
+        }
 
 		private void OpenAVDirButton_Click(object sender, RoutedEventArgs e)
 		{
@@ -152,6 +170,7 @@ namespace MMCS_MSE
             lists.Clear();
             groups.Clear();
             clearLDTTables();
+            triggerGButtons(false);
             triggerLDButtons(false);
             triggerTButtons(false);
 
@@ -293,6 +312,8 @@ namespace MMCS_MSE
 					}
 				}
 			}
+
+            if (groups.Count > 0) { triggerGButtons(true); }
 		}
 
 		private void fill_lists_array()
@@ -998,20 +1019,12 @@ namespace MMCS_MSE
 
 		private void addGroupButton_Click(object sender, RoutedEventArgs e)
 		{
-			if (groups.Count == 0) return;
-			//int newId = 2;
+			if (groups.Count < 2) return;
 			int newId = groups.Max((grp) => grp.Id) + 1;
-			//foreach (MSGroup group in groups)
-			//{
-			//	if (group.Id == newId) newId++;
-			//}
-			//byte[] newName = new byte[mserver.groupName_length];
-			//Array.ForEach(newName, b => b = 0x00);
-			//byte[] new_name = Encoding.GetEncoding(codePage).GetBytes("New group");
-			//Array.Copy(new_name, 0, newName, 0, new_name.Length);
 			MSGroup ngroup = new MSGroup(newId, "New group");
 			//ngroup.Added = true;
 			groups.Add(ngroup);
+            triggerGButtons(true);
 
 #if DEBUG
 			saveFButton.IsEnabled = true;
@@ -1025,11 +1038,8 @@ namespace MMCS_MSE
 			if (group.Id < 2) return;
 			groups.Remove(group);
 			//group.Deleted = true;
-			//foreach (MSGroup cg in groups)
-			//{
-			//if (cg.Id > group.Id) cg.Id--;
-			//}
 			System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource).Refresh();
+            triggerGButtons(true);
 
 #if DEBUG
 			saveFButton.IsEnabled = true;
@@ -2079,29 +2089,50 @@ namespace MMCS_MSE
 			TrackslistView.Items.Refresh();
 			listViewTemplate.Items.Refresh();
 		}
+        
+        private void hideButtons(bool hide)
+        {
+            Visibility vis = (hide) ? Visibility.Hidden : Visibility.Visible;
+            radioButton.Visibility = vis;
+            radioButton_Copy.Visibility = vis;
+            radioButton_Copy1.Visibility = vis;
+            radioButton_Copy2.Visibility = vis;
+            radioButton_Copy3.Visibility = vis;
+            radioButton_Copy4.Visibility = vis;
+            radioButton_Copy5.Visibility = vis;
+            radioButton_Copy6.Visibility = vis;
+            radioButton_Copy7.Visibility = vis;
+            radioButton_Copy8.Visibility = vis;
+            radioButton_Copy9.Visibility = vis;
+            radioButton_Copy10.Visibility = vis;
+            radioButton_Copy11.Visibility = vis;
+            radioButton_Copy12.Visibility = vis;
+            radioButton_Copy13.Visibility = vis;
+            radioButton_Copy14.Visibility = vis;
+        }
 
-		//class testItem
-		//{
-		//	private int id;
-		//	public int Id { get { return this.id; } }
-		//	public testItem(int id)
-		//	{
-		//		this.id = id;
-		//	}
-		//}
-		//class testClass
-		//{
-		//	private List<testItem> strings;
-		//	public void AddString (testItem str)
-		//	{
-		//		this.strings.Add(str);
-		//	}
-		//	public testClass(testItem str)
-		//	{
-		//		this.strings = new List<testItem>() { str };
-		//	}
-		//}
-	}
+        //class testItem
+        //{
+        //	private int id;
+        //	public int Id { get { return this.id; } }
+        //	public testItem(int id)
+        //	{
+        //		this.id = id;
+        //	}
+        //}
+        //class testClass
+        //{
+        //	private List<testItem> strings;
+        //	public void AddString (testItem str)
+        //	{
+        //		this.strings.Add(str);
+        //	}
+        //	public testClass(testItem str)
+        //	{
+        //		this.strings = new List<testItem>() { str };
+        //	}
+        //}
+    }
 
 	public class LVStyleSelector : StyleSelector
 	{
