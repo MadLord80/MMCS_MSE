@@ -128,29 +128,32 @@ namespace MMCS_MSE
             {
                 button.IsEnabled = false;
             }
+            else if (button.Name == "addGroupButton" && groups.Count > 0)
+            {
+                button.IsEnabled = true;
+            }
         }
 
         private void triggerLDButtons(bool onoff)
         {
             editButtonTemplate.IsEnabled = onoff;
-			delButtonTemplate.IsEnabled = onoff;
-			addButtonTemplate.IsEnabled = onoff;
+			delButtonTemplate.IsEnabled = false;
+			addButtonTemplate.IsEnabled = false;
 			copyButtonTemplate.IsEnabled = onoff;
         }
 
         private void triggerTButtons(bool onoff)
         {
             editTrackButton.IsEnabled = onoff;
-			delTrackButton.IsEnabled = onoff;
-			addTrackButton.IsEnabled = onoff;
+			delTrackButton.IsEnabled = false;
+			addTrackButton.IsEnabled = false;
 			copyTrackButton.IsEnabled = onoff;
         }
         private void triggerGButtons(bool onoff)
         {
-            //editGroupButton.ev
             editGroupButton.IsEnabled = onoff;
-            delGroupButton.IsEnabled = onoff;
-            addGroupButton.IsEnabled = onoff;
+            delGroupButton.IsEnabled = false;
+            addGroupButton.IsEnabled = false;
             copyGroupButton.IsEnabled = onoff;
         }
 
@@ -1039,7 +1042,7 @@ namespace MMCS_MSE
 			groups.Remove(group);
 			//group.Deleted = true;
 			System.Windows.Data.CollectionViewSource.GetDefaultView(GroupsListView.ItemsSource).Refresh();
-            triggerGButtons(true);
+            if (groups.Count < 3) { triggerGButtons(false); }
 
 #if DEBUG
 			saveFButton.IsEnabled = true;
@@ -1120,7 +1123,8 @@ namespace MMCS_MSE
                         if (group.Id < 2) { continue; }
 
                         fs.Position = mserver.index_header_size + group.Id * (4 + mserver.NameDesc_length) + 4;
-                        byte[] g_name = Encoding.GetEncoding(codePage).GetBytes(group.Name);
+                        byte[] g_name = new byte[mserver.NameDesc_length];
+                        Encoding.GetEncoding(codePage).GetBytes(group.Name).CopyTo(g_name, 0);
                         fs.Write(g_name, 0, g_name.Length);
                     }
                 }
