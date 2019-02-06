@@ -1145,10 +1145,118 @@ namespace MMCS_MSE
 			}
 
 			listViewTemplate.Items.Refresh();
-			saveLDButton.IsEnabled = false;
+            updateDiscsNames();
+            saveLDButton.IsEnabled = false;
 		}
 
-		private void saveTButton_Click(object sender, RoutedEventArgs e)
+        private void updateDiscsNames()
+        {
+            //update ORG_ARRAY
+            string org_path = mserver.get_ORGpath();
+            if (!File.Exists(org_path))
+            {
+                System.Windows.MessageBox.Show(org_path + " not found!");
+                return;
+            }
+
+            using (FileStream fs = new FileStream(org_path, FileMode.Open, FileAccess.ReadWrite))
+            {
+                byte[] discs_cnt = new byte[mserver.org_discs_cnt_length];
+                fs.Position = mserver.org_discs_cnt_offset;
+                fs.Read(discs_cnt, 0, discs_cnt.Length);
+                int discs_count = BitConverter.ToInt32(discs_cnt, 0);
+
+                byte[] disc_desc = new byte[mserver.org_discdata_size];
+                for (int i = 0; i < discs_count; i++)
+                {
+                    fs.Read(disc_desc, 0, disc_desc.Length);
+                    ElenmentId discid = new ElenmentId(new ArraySegment<byte>(disc_desc, 1, 4).ToArray());
+                    MSDisc discData = discs.Where(d => d.Id.Id == discid.Id && d.Id.Prefix == discid.Prefix).First();
+                    // to start of disc name
+                    fs.Position -= 212;
+                    byte[] d_name = new byte[mserver.NameDesc_length];
+                    Encoding.GetEncoding(codePage).GetBytes(discData.Name).CopyTo(d_name, 0);
+                    fs.Write(d_name, 0, d_name.Length);
+                    // to end of disc data
+                    fs.Position += 84;
+                }
+            }
+
+            //update TITLEs
+            string title_path = mserver.get_TITLEpath();
+            if (!Directory.Exists(title_path))
+            {
+                return;
+            }
+            DirectoryInfo[] title_dirs = new DirectoryInfo(mserver.get_TITLEpath()).GetDirectories();
+            foreach (DirectoryInfo title_dir in title_dirs)
+            {
+                FileInfo[] title_files = title_dir.GetFiles("*.lst");
+                foreach (FileInfo title_file in title_files)
+                {
+                    using (FileStream fs = new FileStream(title_file.FullName, FileMode.Open, FileAccess.ReadWrite))
+                    {
+                        //1 TITLE - n discs
+                        List<int> trackListSizes = new List<int>();
+
+                        fs.Position = mserver.title_header_size;
+                        //tracks size maybe 0!
+                        for (int i = 0; i < mserver.title_max_lengths; i++)
+                        {
+                            byte[] trackListSize = new byte[mserver.title_length_size];
+                            fs.Read(trackListSize, 0, trackListSize.Length);
+                            int tls = BitConverter.ToInt32(trackListSize, 0);
+                            if (tls == 0) { continue; }
+                            trackListSizes.Add(tls);
+                        }
+
+                        int header_and_listsizes = mserver.title_header_size + mserver.title_length_size * mserver.title_max_lengths;
+
+                        int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
+                        fs.Position = header_and_listsizes;
+                        for (int i = 0; i < trackListSizes.Count; i++)
+                        {
+                            byte[] list_header = new byte[mserver.title_list_header_size];
+                            fs.Read(list_header, 0, list_header.Length);
+
+                            ElenmentId discid = new ElenmentId(new ArraySegment<byte>(list_header, 4, 4).ToArray());
+                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).FirstOrDefault();
+                            int tracks_count = new ArraySegment<byte>(list_header, 8, 1).ToArray()[0];
+                            if (curDisc == null)
+                            {
+                                fs.Position += tracks_count * track_desc_size + track_desc_size;
+                                continue;
+                            }
+
+                            // disc desc
+                            byte[] disc_artist = new byte[track_desc_size];
+                            fs.Read(disc_artist, 0, disc_artist.Length);
+                            curDisc.SetArtist(new ArraySegment<byte>(disc_artist, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray());
+                            //fs.Position += track_desc_size;
+
+                            for (int tid = 0; tid < tracks_count; tid++)
+                            {
+                                byte[] track_data = new byte[track_desc_size];
+                                fs.Read(track_data, 0, track_data.Length);
+                                MSTrack track = new MSTrack(
+                                    curDisc.Id,
+                                    tid + 1,
+                                    new ArraySegment<byte>(track_data, 0, mserver.NameDesc_length).ToArray(),
+                                    new ArraySegment<byte>(track_data, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray()
+                                );
+                                if (factTracks.Where((kvp) => kvp.Key.FullId == discid.FullId && kvp.Value.Contains(tid + 1)).ToArray().Length > 0)
+                                {
+                                    track.Exists = true;
+                                }
+                                curDisc.AddTrack(track);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void saveTButton_Click(object sender, RoutedEventArgs e)
 		{
 			GridView gv = (TrackslistView.View as GridView);
 			if (gv == null || gv.Columns.Count == 0) return;
