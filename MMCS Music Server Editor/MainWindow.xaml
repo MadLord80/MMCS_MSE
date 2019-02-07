@@ -115,7 +115,12 @@
             </ListView.View>
         </ListView>
         <Label x:Name="tableLableTemplate" Content="" HorizontalAlignment="Left" Margin="409,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
-        <ListView x:Name="TrackslistView" HorizontalAlignment="Left" Height="310" Margin="842,93,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" Background="Gray" MouseUp="TrackslistView_MouseUp">
+        <ListView x:Name="TrackslistView" HorizontalAlignment="Left" Height="310" Margin="842,93,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" Background="Gray" MouseUp="TrackslistView_MouseUp" ContextMenuOpening="trackContextMenu">
+            <ListView.ContextMenu>
+                <ContextMenu Background="#FF333333">
+                    <MenuItem Header="Play" Background="#FF333333"/>
+                </ContextMenu>
+            </ListView.ContextMenu>
             <ListView.View>
                 <GridView/>
             </ListView.View>

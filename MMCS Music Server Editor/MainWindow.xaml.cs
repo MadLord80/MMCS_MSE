@@ -35,7 +35,7 @@ namespace MMCS_MSE
 
 		private Dictionary<ElenmentId, List<int>> factTracks = new Dictionary<ElenmentId, List<int>>();
 
-		private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
+        //private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
         
 		System.ComponentModel.BackgroundWorker copyMoveworker;
 
@@ -44,12 +44,12 @@ namespace MMCS_MSE
 			get { return this.codePage; }
 		}
 
-		internal bool is_favTrack(MSTrack track)
-		{
+		//internal bool is_favTrack(MSTrack track)
+		//{
 			//bool is_fav = this.lists.Where(l => l.Id == mserver.fav_listId).First().Tracks.Contains(track);
 			//return is_fav;
-			return false;
-		}
+		//	return false;
+		//}
 
 		public MainWindow()
 		{
@@ -70,7 +70,7 @@ namespace MMCS_MSE
 
 			((INotifyCollectionChanged)listViewTemplate.Items).CollectionChanged += ListView_CollectionChanged;
 			((INotifyCollectionChanged)TrackslistView.Items).CollectionChanged += ListView_CollectionChanged;
-
+            
 			//hideButtons(true);
 
 			editButtonTemplate.Click += new RoutedEventHandler(on_editList);
@@ -118,7 +118,22 @@ namespace MMCS_MSE
             //addTrackButton.IsEnabled = false;
 #endif
         }
-               
+
+        private void trackContextMenu(object sender, ContextMenuEventArgs e)
+        {
+            if (TrackslistView.SelectedItem == null)
+            {
+                e.Handled = true;
+                FrameworkElement fe = e.Source as FrameworkElement;
+                fe.ContextMenu.IsOpen = false;
+            }
+        }
+
+        //private ICommand playTrack()
+        //{
+        //    get { }
+        //}
+
         private void checkCodePageForIsEnabled(object sender, DependencyPropertyChangedEventArgs e)
         {
             System.Windows.Controls.Button button = (sender as System.Windows.Controls.Button);
@@ -1359,14 +1374,14 @@ namespace MMCS_MSE
 
 			System.Windows.Controls.Image img = (dep as System.Windows.Controls.Image);
 			MSTrack track = (img.DataContext as MSTrack);
-			if (is_favTrack(track))
-			{
+			//if (is_favTrack(track))
+			//{
 				//lists.Where(l => l.Id == mserver.fav_listId).First().Tracks.Remove(track);
-			}
-			else
-			{
+			//}
+			//else
+			//{
 				//lists.Where(l => l.Id == mserver.fav_listId).First().Tracks.Add(track);
-			}
+			//}
 
 			TrackslistView.SelectedItem = null;
 			TrackslistView.Items.Refresh();
@@ -1466,27 +1481,27 @@ namespace MMCS_MSE
 			//if (groups.Where(g => g.Deleted).ToList().Count > 0) del_Groups();
 			//if (groups.Where(g => g.NameChanged).ToList().Count > 0) change_GroupNames();
 
-			saveFButton.IsEnabled = false;
-			System.Windows.MessageBox.Show("Music Server files updated!");
-			fileBackuped.Clear();
-			initServer(mserver.MainDir);
+			//saveFButton.IsEnabled = false;
+			//System.Windows.MessageBox.Show("Music Server files updated!");
+			//fileBackuped.Clear();
+			//initServer(mserver.MainDir);
 		}
 
 		private bool makeFilecopy(string file)
 		{
-			if (fileBackuped.ContainsKey(file) && fileBackuped[file]) return true;
-			if (File.Exists(file + ".old"))
-			{
-				MessageBoxResult res = System.Windows.MessageBox.Show("File " + file + ".old exists! Do you want overwrite it?", "Save backup file", MessageBoxButton.YesNo);
-				if (res == MessageBoxResult.No) return false;
-			}
-			File.Copy(file, file + ".old", true);
-			if (!fileBackuped.ContainsKey(file)) fileBackuped.Add(file, true);
-			fileBackuped[file] = true;
-			return true;
-		}
+            //if (fileBackuped.ContainsKey(file) && fileBackuped[file]) return true;
+            //if (File.Exists(file + ".old"))
+            //{
+            //	MessageBoxResult res = System.Windows.MessageBox.Show("File " + file + ".old exists! Do you want overwrite it?", "Save backup file", MessageBoxButton.YesNo);
+            //	if (res == MessageBoxResult.No) return false;
+            //}
+            //File.Copy(file, file + ".old", true);
+            //if (!fileBackuped.ContainsKey(file)) fileBackuped.Add(file, true);
+            //fileBackuped[file] = true;
+            return true;
+        }
 
-		private void change_GroupNames()
+        private void change_GroupNames()
 		{
 			string info_path = mserver.get_INDEXpath();
 			if (!File.Exists(info_path))
@@ -2329,7 +2344,7 @@ namespace MMCS_MSE
         //}
     }
 
-	public class LVStyleSelector : StyleSelector
+    public class LVStyleSelector : StyleSelector
 	{
 		public override Style SelectStyle(object item, DependencyObject container)
 		{
@@ -2477,14 +2492,15 @@ namespace MMCS_MSE
 			FrameworkElementFactory img = new FrameworkElementFactory(typeof(System.Windows.Controls.Image));
 
 			MSTrack track = (item as MSTrack);
-			string fav_img = (((MainWindow)System.Windows.Application.Current.MainWindow).is_favTrack(track)) ? "fav.png" : "nfav.png";
-			BitmapImage bitmapImage = new BitmapImage(new Uri(@"pack://application:,,,/"
-				+ Assembly.GetExecutingAssembly().GetName().Name
-				+ ";component/"
-				+ "Images/" + fav_img, UriKind.Absolute));
-			img.SetValue(System.Windows.Controls.Image.SourceProperty, bitmapImage);
-			img.SetValue(System.Windows.Controls.Image.WidthProperty, 20d);
-			return new DataTemplate { VisualTree = img };
+            //string fav_img = (((MainWindow)System.Windows.Application.Current.MainWindow).is_favTrack(track)) ? "fav.png" : "nfav.png";
+            string fav_img = "nfav.png";
+            BitmapImage bitmapImage = new BitmapImage(new Uri(@"pack://application:,,,/"
+                + Assembly.GetExecutingAssembly().GetName().Name
+                + ";component/"
+                + "Images/" + fav_img, UriKind.Absolute));
+            img.SetValue(System.Windows.Controls.Image.SourceProperty, bitmapImage);
+            img.SetValue(System.Windows.Controls.Image.WidthProperty, 20d);
+            return new DataTemplate { VisualTree = img };
 		}
 	}
 }
