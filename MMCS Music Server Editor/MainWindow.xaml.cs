@@ -36,7 +36,7 @@ namespace MMCS_MSE
 		private Dictionary<ElenmentId, List<int>> factTracks = new Dictionary<ElenmentId, List<int>>();
 
 		private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
-
+        
 		System.ComponentModel.BackgroundWorker copyMoveworker;
 
 		internal string CodePage
@@ -604,7 +604,7 @@ namespace MMCS_MSE
 				copyTrackButton.ToolTip = "Copy DiscId: Name-Artist to clipboard";
 			}
 
-			if (TrackslistView.Items.Count > 0) { changeNATrackButton.IsEnabled = true; }
+			if (TrackslistView.Items.Count > 0 && createServer_Button.Visibility == Visibility.Visible) { changeNATrackButton.IsEnabled = true; }
 		}
 
 		private void on_editList(object sender, RoutedEventArgs args)
@@ -1127,6 +1127,15 @@ namespace MMCS_MSE
                         Encoding.GetEncoding(codePage).GetBytes(group.Name).CopyTo(g_name, 0);
                         fs.Write(g_name, 0, g_name.Length);
                     }
+
+                    // update checksum
+                    byte[] fileData = new byte[fs.Length - 4];
+                    fs.Position = 4;
+                    fs.Read(fileData, 0, fileData.Length);
+                    UInt32 checksum = BitConverter.ToUInt32(hf.checksum32bit(fileData), 0);
+                    checksum += BitConverter.ToUInt32(new ArraySegment<byte>(fileData, 32, 4).ToArray(), 0);
+                    fs.Position = 0;
+                    fs.Write(BitConverter.GetBytes(checksum), 0, 4);
                 }
             }
         }
@@ -1220,36 +1229,27 @@ namespace MMCS_MSE
                             fs.Read(list_header, 0, list_header.Length);
 
                             ElenmentId discid = new ElenmentId(new ArraySegment<byte>(list_header, 4, 4).ToArray());
-                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).FirstOrDefault();
+                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).First();
                             int tracks_count = new ArraySegment<byte>(list_header, 8, 1).ToArray()[0];
-                            if (curDisc == null)
-                            {
-                                fs.Position += tracks_count * track_desc_size + track_desc_size;
-                                continue;
-                            }
+                            //if (curDisc == null)
+                            //{
+                            //    fs.Position += tracks_count * track_desc_size + track_desc_size;
+                            //    continue;
+                            //}
 
-                            // disc desc
-                            byte[] disc_artist = new byte[track_desc_size];
-                            fs.Read(disc_artist, 0, disc_artist.Length);
-                            curDisc.SetArtist(new ArraySegment<byte>(disc_artist, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray());
-                            //fs.Position += track_desc_size;
+                            // update disc desc
+                            byte[] d_name = new byte[mserver.NameDesc_length];
+                            Encoding.GetEncoding(codePage).GetBytes(curDisc.Name).CopyTo(d_name, 0);
+                            fs.Write(d_name, 0, d_name.Length);
 
-                            for (int tid = 0; tid < tracks_count; tid++)
-                            {
-                                byte[] track_data = new byte[track_desc_size];
-                                fs.Read(track_data, 0, track_data.Length);
-                                MSTrack track = new MSTrack(
-                                    curDisc.Id,
-                                    tid + 1,
-                                    new ArraySegment<byte>(track_data, 0, mserver.NameDesc_length).ToArray(),
-                                    new ArraySegment<byte>(track_data, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray()
-                                );
-                                if (factTracks.Where((kvp) => kvp.Key.FullId == discid.FullId && kvp.Value.Contains(tid + 1)).ToArray().Length > 0)
-                                {
-                                    track.Exists = true;
-                                }
-                                curDisc.AddTrack(track);
-                            }
+                            // update disc checksum
+                            byte[] tracksData = new byte[tracks_count * track_desc_size + track_desc_size + 8];
+                            fs.Position -= d_name.Length + 8;
+                            fs.Read(tracksData, 0, tracksData.Length);
+                            byte[] checksum = hf.checksum32bit(tracksData);
+                            fs.Position -= tracksData.Length + 4;
+                            fs.Write(checksum, 0, checksum.Length);
+                            fs.Position += tracksData.Length;
                         }
                     }
                 }
@@ -1267,11 +1267,92 @@ namespace MMCS_MSE
 			gv.Columns[2].CellTemplateSelector = null;
 
 			TrackslistView.Items.Refresh();
+            updateTrackNames();
 			saveTButton.IsEnabled = false;
 			//if (discs.Where(d => d.Tracks.Where(t => t.NameChanged).ToList().Count > 0).ToList().Count > 0) saveFButton.IsEnabled = true;
 		}
 
-		private void TrackslistView_MouseUp(object sender, MouseButtonEventArgs e)
+        private void updateTrackNames()
+        {
+            //update TITLEs
+            string title_path = mserver.get_TITLEpath();
+            if (!Directory.Exists(title_path))
+            {
+                return;
+            }
+            DirectoryInfo[] title_dirs = new DirectoryInfo(mserver.get_TITLEpath()).GetDirectories();
+            foreach (DirectoryInfo title_dir in title_dirs)
+            {
+                FileInfo[] title_files = title_dir.GetFiles("*.lst");
+                foreach (FileInfo title_file in title_files)
+                {
+                    using (FileStream fs = new FileStream(title_file.FullName, FileMode.Open, FileAccess.ReadWrite))
+                    {
+                        //1 TITLE - n discs
+                        List<int> trackListSizes = new List<int>();
+
+                        fs.Position = mserver.title_header_size;
+                        //tracks size maybe 0!
+                        for (int i = 0; i < mserver.title_max_lengths; i++)
+                        {
+                            byte[] trackListSize = new byte[mserver.title_length_size];
+                            fs.Read(trackListSize, 0, trackListSize.Length);
+                            int tls = BitConverter.ToInt32(trackListSize, 0);
+                            if (tls == 0) { continue; }
+                            trackListSizes.Add(tls);
+                        }
+
+                        int header_and_listsizes = mserver.title_header_size + mserver.title_length_size * mserver.title_max_lengths;
+
+                        int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
+                        fs.Position = header_and_listsizes;
+                        for (int i = 0; i < trackListSizes.Count; i++)
+                        {
+                            byte[] list_header = new byte[mserver.title_list_header_size];
+                            fs.Read(list_header, 0, list_header.Length);
+
+                            ElenmentId discid = new ElenmentId(new ArraySegment<byte>(list_header, 4, 4).ToArray());
+                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).First();
+                            int tracks_count = new ArraySegment<byte>(list_header, 8, 1).ToArray()[0];
+                            //if (curDisc == null)
+                            //{
+                            //    fs.Position += tracks_count * track_desc_size + track_desc_size;
+                            //    continue;
+                            //}
+
+                            // skip disc data
+                            fs.Position += track_desc_size;
+
+                            for (int tid = 0; tid < tracks_count; tid++)
+                            {
+                                MSTrack trackData = curDisc.Tracks.Where(tr => tr.Id == tid + 1).First();
+                                // update track name
+                                byte[] t_name = new byte[mserver.NameDesc_length];
+                                byte[] t_artist = new byte[mserver.NameDesc_length];
+                                Encoding.GetEncoding(codePage).GetBytes(trackData.Name).CopyTo(t_name, 0);
+                                Encoding.GetEncoding(codePage).GetBytes(trackData.Artist).CopyTo(t_artist, 0);
+                                fs.Write(t_name, 0, t_name.Length);
+                                fs.Position += mserver.NameLocDesc_length;
+                                fs.Write(t_artist, 0, t_artist.Length);
+                                fs.Position += mserver.NameLocDesc_length;
+                            }
+
+                            // update disc checksum
+                            byte[] tracksData = new byte[tracks_count * track_desc_size + track_desc_size + 8];
+                            fs.Position -= tracksData.Length;
+                            fs.Read(tracksData, 0, tracksData.Length);
+                            byte[] checksum = hf.checksum32bit(tracksData);
+                            fs.Position -= tracksData.Length + 4;
+                            fs.Write(checksum, 0, checksum.Length);
+                            fs.Position += tracksData.Length;
+                        }
+                    }
+                }
+            }
+        }
+
+
+        private void TrackslistView_MouseUp(object sender, MouseButtonEventArgs e)
 		{
 			DependencyObject dep = (DependencyObject)e.OriginalSource;
 			if (!(dep is System.Windows.Controls.Image)) return;
@@ -2124,8 +2205,10 @@ namespace MMCS_MSE
 			copyMoveworker.DoWork += new System.ComponentModel.DoWorkEventHandler(copyMoveWork);
 			copyMoveworker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(copyMoveWorkComplete);
 			copyMoveworker.RunWorkerAsync(copy_move_select == MessageBoxResult.Yes);
-			createServer_Button.IsEnabled = false;
-		}
+            //createServer_Button.IsEnabled = false;
+            createServer_Button.Visibility = Visibility.Hidden;
+
+        }
 
 		private void copyMoveWork(object sender, System.ComponentModel.DoWorkEventArgs arg)
 		{
