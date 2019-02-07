@@ -119,15 +119,15 @@ namespace MMCS_MSE
 #endif
         }
 
-        private void trackContextMenu(object sender, ContextMenuEventArgs e)
-        {
-            if (TrackslistView.SelectedItem == null)
-            {
-                e.Handled = true;
-                FrameworkElement fe = e.Source as FrameworkElement;
-                fe.ContextMenu.IsOpen = false;
-            }
-        }
+        //private void trackContextMenu(object sender, ContextMenuEventArgs e)
+        //{
+            //if (TrackslistView.SelectedItem == null)
+            //{
+            //    e.Handled = true;
+            //    FrameworkElement fe = e.Source as FrameworkElement;
+            //    fe.ContextMenu.IsOpen = false;
+            //}
+        //}
 
         //private ICommand playTrack()
         //{
@@ -2319,6 +2319,16 @@ namespace MMCS_MSE
             radioButton_Copy12.Visibility = vis;
             radioButton_Copy13.Visibility = vis;
             radioButton_Copy14.Visibility = vis;
+        }
+
+        private void MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MSTrack track = TrackslistView.SelectedItem as MSTrack;
+            string dataPath = mserver.get_DATApath();
+            string discId = "DATA" + track.DiscID.FullId.Remove(2);
+            string dirName = track.DiscID.FullId;
+            string filePath = dataPath + "\\" + discId + "\\" + dirName + "\\" + track.File;
+            System.Diagnostics.Process.Start(@filePath);
         }
 
         //class testItem

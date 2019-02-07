@@ -4,7 +4,7 @@ TODO:
 - [x] change Cyrillic to English / Cyrillic
 - [x] fix group id
 - [ ] check create server with ShiftJIS encoding
-- [ ] rename tracks
+- [x] rename tracks
 - [ ] add dir
 - [ ] add track
 - [ ] convert encoding: ISO <-> ShiftJIS

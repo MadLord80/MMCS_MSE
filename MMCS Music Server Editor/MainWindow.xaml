@@ -115,12 +115,24 @@
             </ListView.View>
         </ListView>
         <Label x:Name="tableLableTemplate" Content="" HorizontalAlignment="Left" Margin="409,72,0,0" VerticalAlignment="Top" Width="178" Foreground="#FFFBEFEF" FontWeight="Bold"/>
-        <ListView x:Name="TrackslistView" HorizontalAlignment="Left" Height="310" Margin="842,93,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" Background="Gray" MouseUp="TrackslistView_MouseUp" ContextMenuOpening="trackContextMenu">
-            <ListView.ContextMenu>
+        <ListView x:Name="TrackslistView" HorizontalAlignment="Left" Height="310" Margin="842,93,0,0" VerticalAlignment="Top" Width="416" BorderBrush="#FF828790" Background="Gray" MouseUp="TrackslistView_MouseUp">
+            <!--<ListView.ContextMenu>
                 <ContextMenu Background="#FF333333">
                     <MenuItem Header="Play" Background="#FF333333"/>
                 </ContextMenu>
-            </ListView.ContextMenu>
+            </ListView.ContextMenu>-->
+            
+            <ListView.Resources>
+                <ContextMenu x:Key="ItemContextMenu">
+                    <MenuItem Header="Play track" Command="{Binding Path=DataContext, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListView}}" Click="MenuItem_Click"/>
+                </ContextMenu>
+            </ListView.Resources>
+
+            <ListView.ItemContainerStyle>
+                <Style TargetType="{x:Type ListViewItem}" >
+                    <Setter Property="ContextMenu" Value="{StaticResource ItemContextMenu}" />
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.View>
                 <GridView/>
             </ListView.View>
