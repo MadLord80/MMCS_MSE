@@ -23,7 +23,7 @@ namespace MMCS_MSE
 	public partial class MainWindow : Window
 	{
 		private FolderBrowserDialog opendir = new FolderBrowserDialog();
-		private byte[] temp = new byte[0];
+		//private byte[] temp = new byte[0];
 
 		private string codePage = "iso-8859-5";
 
@@ -34,9 +34,7 @@ namespace MMCS_MSE
 		private ObservableCollection<MSDisc> discs = new ObservableCollection<MSDisc>();
 
 		private Dictionary<ElenmentId, List<int>> factTracks = new Dictionary<ElenmentId, List<int>>();
-
-        //private Dictionary<string, bool> fileBackuped = new Dictionary<string, bool>();
-        
+                
 		System.ComponentModel.BackgroundWorker copyMoveworker;
 
 		internal string CodePage
@@ -44,19 +42,12 @@ namespace MMCS_MSE
 			get { return this.codePage; }
 		}
 
-		//internal bool is_favTrack(MSTrack track)
-		//{
-			//bool is_fav = this.lists.Where(l => l.Id == mserver.fav_listId).First().Tracks.Contains(track);
-			//return is_fav;
-		//	return false;
-		//}
-
 		public MainWindow()
 		{
 			InitializeComponent();
 
             string version = System.Windows.Forms.Application.ProductVersion;
-            this.Title = "MMCS Music Server Editor v." + version.Remove(version.Length - 2);
+            this.Title = "MMCS Music Server Editor v." + version.Remove(version.Length - 2) + " Beta";
 
 			GridView lview = new GridView();
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 30, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
@@ -118,21 +109,6 @@ namespace MMCS_MSE
             //addTrackButton.IsEnabled = false;
 #endif
         }
-
-        //private void trackContextMenu(object sender, ContextMenuEventArgs e)
-        //{
-            //if (TrackslistView.SelectedItem == null)
-            //{
-            //    e.Handled = true;
-            //    FrameworkElement fe = e.Source as FrameworkElement;
-            //    fe.ContextMenu.IsOpen = false;
-            //}
-        //}
-
-        //private ICommand playTrack()
-        //{
-        //    get { }
-        //}
 
         private void checkCodePageForIsEnabled(object sender, DependencyPropertyChangedEventArgs e)
         {
@@ -356,10 +332,7 @@ namespace MMCS_MSE
 					int tls = BitConverter.ToInt32(trackListSize, 0);
 					if (tls == 0) { continue; }
 					trackListSizes.Add(tls);
-					//dtracks_sizes[i] = BitConverter.ToInt32(dtrack_size, 0);
-					//st -= dtracks_sizes[i];
 				}
-				//disc.StartTitle = BitConverter.GetBytes(st);
 
 				int header_and_listsizes_offset = mserver.album_header_size + mserver.album_length_size * mserver.album_max_lists;
 				// check file size
@@ -369,7 +342,6 @@ namespace MMCS_MSE
 					return;
 				}
 
-				//int discPrefixTracks_offset = mserver.dtracks_offset;
 				int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
 				fs.Position = header_and_listsizes_offset;
 				for (int i = 0; i < trackListSizes.Count; i++)
@@ -386,7 +358,6 @@ namespace MMCS_MSE
 					tc[3] = 0;
 					// tracks_count - 1 byte!
 					int tracks_count = BitConverter.ToInt32(tc, 0);
-					//int tracks_count = list_header[8];
 					for (int k = 0; k < tracks_count; k++)
 					{
 						byte[] track_data = new byte[mserver.album_track_data_size];
@@ -474,10 +445,7 @@ namespace MMCS_MSE
 							int tls = BitConverter.ToInt32(trackListSize, 0);
 							if (tls == 0) { continue; }
 							trackListSizes.Add(tls);
-							//dtracks_sizes[i] = BitConverter.ToInt32(dtrack_size, 0);
-							//st -= dtracks_sizes[i];
 						}
-						//disc.StartTitle = BitConverter.GetBytes(st);
 
 						int header_and_listsizes = mserver.title_header_size + mserver.title_length_size * mserver.title_max_lengths;
 						// check file size
@@ -487,7 +455,6 @@ namespace MMCS_MSE
 							return;
 						}
 
-						//int discPrefixTracks_offset = mserver.dtracks_offset;
 						int track_desc_size = 2 * (mserver.NameDesc_length + mserver.NameLocDesc_length);
 						fs.Position = header_and_listsizes;
 						for (int i = 0; i < trackListSizes.Count; i++)
@@ -508,7 +475,6 @@ namespace MMCS_MSE
 							byte[] disc_artist = new byte[track_desc_size];
 							fs.Read(disc_artist, 0, disc_artist.Length);
 							curDisc.SetArtist(new ArraySegment<byte>(disc_artist, mserver.NameDesc_length + mserver.NameLocDesc_length, mserver.NameDesc_length).ToArray());
-							//fs.Position += track_desc_size;
 
 							for (int tid = 0; tid < tracks_count; tid++)
 							{
@@ -565,12 +531,7 @@ namespace MMCS_MSE
 			lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 			lview.Columns.Add(new GridViewColumn() { Header = "Tracks", Width = 45, DisplayMemberBinding = new System.Windows.Data.Binding("Tracks.Count") });
 			MSGroup group = (GroupsListView.SelectedItem as MSGroup);
-			// absent discs folders in ORG_ARRAY
-			//List<MSDisc> discs = group.Discs;
-			//if (group.Id == 0 && factTracks.Count > group.Discs.Count)
-			//{
 
-			//}
 			listViewTemplate.ItemsSource = group.Discs;
 			copyButtonTemplate.ToolTip = "Copy Name-Artist to clipboard";
             editButtonTemplate.IsEnabled = true;
@@ -608,13 +569,6 @@ namespace MMCS_MSE
 				lview.Columns.Add(new GridViewColumn() { Header = "Artist", Width = 140, DisplayMemberBinding = new System.Windows.Data.Binding("Artist") });
 				lview.Columns.Add(new GridViewColumn() { Header = "Disc", Width = 64, DisplayMemberBinding = new System.Windows.Data.Binding("DiscID.FullId") });
 				MSList list = (listViewTemplate.SelectedItem as MSList);
-				//Dictionary<MSTrack, MSDisc> ls = new Dictionary<MSTrack, MSDisc>();
-				//foreach (MSTrack lt in list.Tracks)
-				//{
-				//	MSDisc td = discs.Where(d => d.Tracks.Contains(lt)).First();
-				//	ls.Add(lt, td);
-				//}
-				//TrackslistView.ItemsSource = ls;
 				TrackslistView.ItemsSource = list.Tracks;
 				copyTrackButton.ToolTip = "Copy DiscId: Name-Artist to clipboard";
 			}
@@ -1081,7 +1035,6 @@ namespace MMCS_MSE
 			}
 			else
 			{
-				//if (mi.Header.ToString() == "Cyrillic (ISO 8859-5)")
                 if (mi.Name == "iso_codepage")
 				{
 					codePage = "iso-8859-5";
