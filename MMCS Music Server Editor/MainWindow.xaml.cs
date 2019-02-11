@@ -110,6 +110,26 @@ namespace MMCS_MSE
 #endif
         }
 
+        private bool checkFileForWrite(string file)
+        {
+            try
+            {
+                using (FileStream fs = new FileStream(file, FileMode.Open, FileAccess.ReadWrite))
+                {
+                    byte[] test = new byte[2];
+                    fs.Read(test, 0, test.Length);
+                    fs.Position = 0;
+                    fs.Write(test, 0, test.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(ex.Message);
+                return false;
+            }
+            return true;
+        }
+
         private void checkCodePageForIsEnabled(object sender, DependencyPropertyChangedEventArgs e)
         {
             System.Windows.Controls.Button button = (sender as System.Windows.Controls.Button);
@@ -386,35 +406,35 @@ namespace MMCS_MSE
 				System.Windows.MessageBox.Show(org_path + " not found!");
 				return;
 			}
+            
+            using (FileStream fs = new FileStream(org_path, FileMode.Open, FileAccess.Read))
+            {
+                byte[] discs_cnt = new byte[mserver.org_discs_cnt_length];
+                fs.Position = mserver.org_discs_cnt_offset;
+                fs.Read(discs_cnt, 0, discs_cnt.Length);
+                int discs_count = BitConverter.ToInt32(discs_cnt, 0);
+                // check file size
+                if (fs.Length != mserver.org_header_size + discs_count * mserver.org_discdata_size)
+                {
+                    System.Windows.MessageBox.Show("ORG_ARRAY: incorrect data!");
+                    return;
+                }
 
-			using (FileStream fs = new FileStream(org_path, FileMode.Open, FileAccess.Read))
-			{
-				byte[] discs_cnt = new byte[mserver.org_discs_cnt_length];
-				fs.Position = mserver.org_discs_cnt_offset;
-				fs.Read(discs_cnt, 0, discs_cnt.Length);
-				int discs_count = BitConverter.ToInt32(discs_cnt, 0);
-				// check file size
-				if (fs.Length != mserver.org_header_size + discs_count * mserver.org_discdata_size)
-				{
-					System.Windows.MessageBox.Show("ORG_ARRAY: incorrect data!");
-					return;
-				}
-
-				byte[] disc_desc = new byte[mserver.org_discdata_size];
-				for (int i = 0; i < discs_count; i++)
-				{
-					fs.Read(disc_desc, 0, disc_desc.Length);
-					MSDisc disc = new MSDisc(
-						new ArraySegment<byte>(disc_desc, 1, 4).ToArray(),
-						new ArraySegment<byte>(disc_desc, 12, 128).ToArray()
-					);
-					if (factTracks.Where((kvp) => kvp.Key.FullId == disc.Id.FullId).ToArray().Length > 0)
-					{
-						disc.Exists = true;
-					}
-					discs.Add(disc);
-				}
-			}
+                byte[] disc_desc = new byte[mserver.org_discdata_size];
+                for (int i = 0; i < discs_count; i++)
+                {
+                    fs.Read(disc_desc, 0, disc_desc.Length);
+                    MSDisc disc = new MSDisc(
+                        new ArraySegment<byte>(disc_desc, 1, 4).ToArray(),
+                        new ArraySegment<byte>(disc_desc, 12, 128).ToArray()
+                    );
+                    if (factTracks.Where((kvp) => kvp.Key.FullId == disc.Id.FullId).ToArray().Length > 0)
+                    {
+                        disc.Exists = true;
+                    }
+                    discs.Add(disc);
+                }
+            }
 		}
 
 		private void fill_discs_tracks()
@@ -1084,6 +1104,7 @@ namespace MMCS_MSE
                     return;
                 }
 
+                if (!checkFileForWrite(info_path)) { return; }
                 using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
                 {
                     foreach (MSGroup group in groups)
@@ -1136,6 +1157,7 @@ namespace MMCS_MSE
                 return;
             }
 
+            if (!checkFileForWrite(org_path)) { return; }
             using (FileStream fs = new FileStream(org_path, FileMode.Open, FileAccess.ReadWrite))
             {
                 byte[] discs_cnt = new byte[mserver.org_discs_cnt_length];
@@ -1171,6 +1193,7 @@ namespace MMCS_MSE
                 FileInfo[] title_files = title_dir.GetFiles("*.lst");
                 foreach (FileInfo title_file in title_files)
                 {
+                    if (!checkFileForWrite(title_file.FullName)) { continue; }
                     using (FileStream fs = new FileStream(title_file.FullName, FileMode.Open, FileAccess.ReadWrite))
                     {
                         //1 TITLE - n discs
@@ -1254,6 +1277,7 @@ namespace MMCS_MSE
                 FileInfo[] title_files = title_dir.GetFiles("*.lst");
                 foreach (FileInfo title_file in title_files)
                 {
+                    if (!checkFileForWrite(title_file.FullName)) { continue; }
                     using (FileStream fs = new FileStream(title_file.FullName, FileMode.Open, FileAccess.ReadWrite))
                     {
                         //1 TITLE - n discs
@@ -1280,13 +1304,13 @@ namespace MMCS_MSE
                             fs.Read(list_header, 0, list_header.Length);
 
                             ElenmentId discid = new ElenmentId(new ArraySegment<byte>(list_header, 4, 4).ToArray());
-                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).First();
                             int tracks_count = new ArraySegment<byte>(list_header, 8, 1).ToArray()[0];
-                            //if (curDisc == null)
-                            //{
-                            //    fs.Position += tracks_count * track_desc_size + track_desc_size;
-                            //    continue;
-                            //}
+                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).FirstOrDefault();
+                            if (curDisc == null)
+                            {
+                                fs.Position += tracks_count * track_desc_size + track_desc_size;
+                                continue;
+                            }
 
                             // skip disc data
                             fs.Position += track_desc_size;
@@ -1345,7 +1369,8 @@ namespace MMCS_MSE
 			if (groups.Count == 0) return;
 
 			string file = System.IO.Path.GetDirectoryName(System.Windows.Forms.Application.ExecutablePath) + "\\" + "Report.txt";
-			using (FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write))
+            //if (!checkFileForWrite(file)) { return; }
+            using (FileStream fs = new FileStream(file, FileMode.Create, FileAccess.Write))
 			{
 				string SCPTD = "AVSCPlayTrackData.dat: ";
 				SCPTD += (File.Exists(mserver.MainDir + "\\AVSCPlayTrackData.dat")) ? "exist\n" : "not exist\n";
@@ -1469,7 +1494,8 @@ namespace MMCS_MSE
 				return;
 			}
 
-			using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
+            if (!checkFileForWrite(info_path)) { return; }
+            using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
 			{
 				foreach (MSGroup group in groups)
 				{
@@ -1509,7 +1535,8 @@ namespace MMCS_MSE
 				return;
 			}
 
-			using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
+            if (!checkFileForWrite(info_path)) { return; }
+            using (FileStream fs = new FileStream(info_path, FileMode.Open, FileAccess.ReadWrite))
 			{
 				foreach (MSGroup group in groups.OrderBy(g => g.Id))
 				{
@@ -1833,7 +1860,8 @@ namespace MMCS_MSE
 
 			// create ALBUM
 			Directory.CreateDirectory(mserver.MainDir + mserver.INFO_path + mserver.ALBUM_path + mserver.ALBUM_path + mserver.defALBUM_ID);
-			using (FileStream fs = new FileStream(mserver.get_ALBUMpath(), FileMode.Create, FileAccess.Write))
+            //if (!checkFileForWrite(mserver.get_ALBUMpath())) { return; }
+            using (FileStream fs = new FileStream(mserver.get_ALBUMpath(), FileMode.Create, FileAccess.Write))
 			{
 				// header
 				byte[] album_header = new byte[mserver.album_header_size];
@@ -1878,7 +1906,8 @@ namespace MMCS_MSE
 			foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
 			{
 				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
-				using (FileStream fs = new FileStream(DISCID_path + "\\DISCID" + sDiscId + ".lst", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+                //if (!checkFileForWrite(DISCID_path + "\\DISCID" + sDiscId + ".lst")) { continue; }
+                using (FileStream fs = new FileStream(DISCID_path + "\\DISCID" + sDiscId + ".lst", FileMode.OpenOrCreate, FileAccess.ReadWrite))
 				{
 					if (fs.Length == 0)
 					{
@@ -1921,7 +1950,7 @@ namespace MMCS_MSE
 			{
 				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
 				Directory.CreateDirectory(RECORD_path + "\\RECORD" + sDiscId);
-				using (FileStream fs = new FileStream(RECORD_path + "\\RECORD" + sDiscId + "\\RECORD" + sDiscId + "00001.lst", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+                using (FileStream fs = new FileStream(RECORD_path + "\\RECORD" + sDiscId + "\\RECORD" + sDiscId + "00001.lst", FileMode.OpenOrCreate, FileAccess.ReadWrite))
 				{
 					byte[] header = new byte[mserver.record_header_size];
 					byte[] lengths = new byte[mserver.record_lengths_size];
