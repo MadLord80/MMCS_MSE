@@ -1220,13 +1220,13 @@ namespace MMCS_MSE
                             fs.Read(list_header, 0, list_header.Length);
 
                             ElenmentId discid = new ElenmentId(new ArraySegment<byte>(list_header, 4, 4).ToArray());
-                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).First();
+                            MSDisc curDisc = discs.Where((dsc) => dsc.Id.FullId == discid.FullId).FirstOrDefault();
                             int tracks_count = new ArraySegment<byte>(list_header, 8, 1).ToArray()[0];
-                            //if (curDisc == null)
-                            //{
-                            //    fs.Position += tracks_count * track_desc_size + track_desc_size;
-                            //    continue;
-                            //}
+                            if (curDisc == null)
+                            {
+                                fs.Position += tracks_count * track_desc_size + track_desc_size;
+                                continue;
+                            }
 
                             // update disc desc
                             byte[] d_name = new byte[mserver.NameDesc_length];
