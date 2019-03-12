@@ -280,7 +280,10 @@ namespace MMCS_MSE
                     int groupId = (group_data[0] == 0xff)
                         ? BitConverter.ToInt32(new ArraySegment<byte>(group_data, 0, 4).ToArray(), 0)
                         : (int)group_data[0];
-                    if (groupId != i && groupId != 0x010000ff)
+                    // standard groups has strange indexes
+                    // may be: 00000000 (orig discs) and 01000000 (favs)
+                    // may be: 01030000 (orig discs) and 00000000 (favs)
+                    if (groupId > 1 && groupId != i && groupId != 0x010000ff)
                     {
                         string groupName = new TrackDiscDesc(new ArraySegment<byte>(group_data, 4, mserver.NameDesc_length).ToArray()).Name;
                         System.Windows.MessageBox.Show(groupId + ": fail group id for group " + groupName + "!");
@@ -292,9 +295,13 @@ namespace MMCS_MSE
 						break;
 					}
 
-					groups.Add(new MSGroup(
+                    byte[] gid = (groupId > 1)
+                        ? new byte[] { group_data[0], 0, 0, 0 }
+                        : new byte[] { (byte)i, 0, 0, 0 };
+                    groups.Add(new MSGroup(
 						//new ArraySegment<byte>(group_data, 0, 4).ToArray(),
-                        new byte[] {group_data[0], 0, 0, 0}, 
+                        //new byte[] {group_data[0], 0, 0, 0}, 
+                        gid,
 						new ArraySegment<byte>(group_data, 4, mserver.NameDesc_length).ToArray()
 					));
 				}
