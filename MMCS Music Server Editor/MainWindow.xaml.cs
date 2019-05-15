@@ -36,8 +36,9 @@ namespace MMCS_MSE
 		private Dictionary<ElenmentId, List<int>> factTracks = new Dictionary<ElenmentId, List<int>>();
                 
 		System.ComponentModel.BackgroundWorker copyMoveworker;
+        System.ComponentModel.BackgroundWorker exportTracks1worker;
 
-		internal string CodePage
+        internal string CodePage
 		{
 			get { return this.codePage; }
 		}
@@ -77,6 +78,7 @@ namespace MMCS_MSE
             saveFButton.Visibility = Visibility.Hidden;
             createServer_Button.Visibility = Visibility.Hidden;
 			copyMoveProgress.Visibility = Visibility.Hidden;
+            export1Button.IsEnabled = false;
 
             editButtonTemplate.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
             delButtonTemplate.IsEnabledChanged += new DependencyPropertyChangedEventHandler(checkCodePageForIsEnabled);
@@ -189,6 +191,7 @@ namespace MMCS_MSE
             triggerTButtons(false);
 
             createServer_Button.Visibility = Visibility.Hidden;
+            export1Button.IsEnabled = false;
         }
 
         private void initServer(string path)
@@ -243,6 +246,9 @@ namespace MMCS_MSE
 					factTracks.Add(new ElenmentId(trackdir.Name), tids);
 				}
 			}
+
+            // not export empty lists
+            if (factTracks.Count > 0) { export1Button.IsEnabled = true; }
 		}
 
 		private void fill_groups_table()
@@ -2211,7 +2217,6 @@ namespace MMCS_MSE
 			copyMoveworker.RunWorkerAsync(copy_move_select == MessageBoxResult.Yes);
             //createServer_Button.IsEnabled = false;
             createServer_Button.Visibility = Visibility.Hidden;
-
         }
 
 		private void copyMoveWork(object sender, System.ComponentModel.DoWorkEventArgs arg)
@@ -2223,6 +2228,7 @@ namespace MMCS_MSE
 		{
 			Mouse.OverrideCursor = null;
 			System.Windows.MessageBox.Show("Done!");
+            if (arg.Error != null) { System.Windows.MessageBox.Show("Error: " + arg.Error.ToString()); }
 			copyMoveProgress.Visibility = Visibility.Hidden;
 		}
 
@@ -2318,6 +2324,70 @@ namespace MMCS_MSE
             string dirName = track.DiscID.FullId;
             string filePath = dataPath + "\\" + discId + "\\" + dirName + "\\" + track.File;
             System.Diagnostics.Process.Start(@filePath);
+        }
+
+        private void export1Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (groups.Where((grp) => grp.Id == 0).First().Discs.Count < 1) { return; }
+
+            if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                string export_path = opendir.SelectedPath;
+                                
+                Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+                copyMoveProgress.Visibility = Visibility.Visible;
+                int tracksCount = groups.Where((grp) => grp.Id == 0).First().Discs.Sum((dsc) => dsc.Tracks.Count);
+                copyMoveProgress.Maximum = tracksCount;
+                copyMoveProgress.Value = 0;
+                exportTracks1worker = new System.ComponentModel.BackgroundWorker();
+                exportTracks1worker.DoWork += new System.ComponentModel.DoWorkEventHandler(ExportTracks1Work);
+                exportTracks1worker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(copyMoveWorkComplete);
+                exportTracks1worker.RunWorkerAsync(export_path);
+                //ExportTracks1(export_path);
+                //Mouse.OverrideCursor = null;
+                //copyMoveProgress.Visibility = Visibility.Hidden;
+                //System.Windows.MessageBox.Show("Done!");
+            }
+        }
+
+        private void ExportTracks1Work(object sender, System.ComponentModel.DoWorkEventArgs arg)
+        {
+            ExportTracks1((string)arg.Argument);
+        }
+
+        private void ExportTracks1(string export_path)
+        {
+            UpdateProgressBarDelegate updProgress = new UpdateProgressBarDelegate(copyMoveProgress.SetValue);
+            double value = 0;
+            string regexSearch = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
+            Regex invalidChars = new Regex(string.Format("[{0}]", Regex.Escape(regexSearch)));
+            foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
+            {
+                string dirName = (disc.Artist == "" && disc.Name == "")
+                    ? disc.Id.FullId
+                    : disc.Artist + " == " + disc.Name;
+                //string dirName = disc.Id.FullId;
+                dirName = invalidChars.Replace(dirName, "");
+                if (Directory.Exists(export_path + "\\" + dirName)) { Directory.Delete(export_path + "\\" + dirName, true); }
+                DirectoryInfo discDir = Directory.CreateDirectory(export_path + "\\" + dirName);
+
+                foreach (MSTrack track in disc.Tracks)
+                {
+                    string sc_file = mserver.get_DATApath() + "\\DATA" + track.DiscID.FullId.Remove(2)
+                        + "\\" + track.DiscID.FullId + "\\" + track.File;
+                    string trackName = (track.Artist == "" && track.Name == "")
+                        ? track.File
+                        : track.File.Remove(3) + "." + track.Artist + " == " + track.Name + ".sc";
+                    trackName = invalidChars.Replace(trackName, "");
+                    string exp_file = discDir.FullName + "\\" + trackName;
+
+                    if (File.Exists(sc_file))
+                    {
+                        File.Copy(sc_file, exp_file);
+                        Dispatcher.Invoke(updProgress, new object[] { System.Windows.Controls.ProgressBar.ValueProperty, ++value });
+                    }
+                }
+            }
         }
 
         //class testItem
