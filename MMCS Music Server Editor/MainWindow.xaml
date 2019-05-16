@@ -20,7 +20,7 @@
             </MenuItem>
             <MenuItem Header="Tools" Height="24" Margin="0" VerticalAlignment="Top">
                 <MenuItem x:Name="ServerFromDir_Button" Header="Create server from directory" HorizontalAlignment="Left" Width="193" Margin="0,0,-97,0" Click="ServerFromDir_Button_Click"/>
-                <MenuItem x:Name="export1Button" Header="Export to NN-Artist-Name" HorizontalAlignment="Left" Width="193" Click="export1Button_Click"/>
+                <MenuItem x:Name="export1Button" Header="Export to NNN-Artist-Name" HorizontalAlignment="Left" Width="193" Click="export1Button_Click"/>
                 <MenuItem x:Name="reportButton" Header="Report" HorizontalAlignment="Left" Width="193" Click="reportButton_Click"/>
             </MenuItem>
             <MenuItem x:Name="testButton" Header="Test" Height="24" Margin="0" VerticalAlignment="Top" Width="100" Click="TestButton_Click"/>
