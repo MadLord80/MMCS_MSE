@@ -2339,21 +2339,21 @@ namespace MMCS_MSE
                 int tracksCount = groups.Where((grp) => grp.Id == 0).First().Discs.Sum((dsc) => dsc.Tracks.Count);
                 copyMoveProgress.Maximum = tracksCount;
                 copyMoveProgress.Value = 0;
-                exportTracks1worker = new System.ComponentModel.BackgroundWorker();
-                exportTracks1worker.DoWork += new System.ComponentModel.DoWorkEventHandler(ExportTracks1Work);
-                exportTracks1worker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(copyMoveWorkComplete);
-                exportTracks1worker.RunWorkerAsync(export_path);
-                //ExportTracks1(export_path);
-                //Mouse.OverrideCursor = null;
-                //copyMoveProgress.Visibility = Visibility.Hidden;
-                //System.Windows.MessageBox.Show("Done!");
+                //exportTracks1worker = new System.ComponentModel.BackgroundWorker();
+                //exportTracks1worker.DoWork += new System.ComponentModel.DoWorkEventHandler(ExportTracks1Work);
+                //exportTracks1worker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(copyMoveWorkComplete);
+                //exportTracks1worker.RunWorkerAsync(export_path);
+                ExportTracks1(export_path);
+                Mouse.OverrideCursor = null;
+                copyMoveProgress.Visibility = Visibility.Hidden;
+                System.Windows.MessageBox.Show("Done!");
             }
         }
 
-        private void ExportTracks1Work(object sender, System.ComponentModel.DoWorkEventArgs arg)
-        {
-            ExportTracks1((string)arg.Argument);
-        }
+        //private void ExportTracks1Work(object sender, System.ComponentModel.DoWorkEventArgs arg)
+        //{
+        //    ExportTracks1((string)arg.Argument);
+        //}
 
         private void ExportTracks1(string export_path)
         {
