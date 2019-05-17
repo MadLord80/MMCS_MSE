@@ -521,9 +521,10 @@ namespace MMCS_MSE
 								);
 								if (factTracks.Where((kvp) => kvp.Key.FullId == discid.FullId && kvp.Value.Contains(tid + 1)).ToArray().Length > 0)
 								{
-									track.Exists = true;
-								}
-								curDisc.AddTrack(track);
+                                    track.Exists = true;
+
+                                }
+                                curDisc.AddTrack(track);
 							}
 						}
 					}
@@ -2390,6 +2391,158 @@ namespace MMCS_MSE
             }
         }
 
+        private void ServerFromExp1Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (opendir.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                string sc_path = opendir.SelectedPath;
+                //string sc_path = "D:\\tmp\\testmusic_oma";
+                //string sc_path = "D:\\id3vtest\\!! музыкаoma_dirs";
+
+                clearCurrentData();
+
+                List<MSDisc> origDiscs = createDirTracksFromExp1Dir(sc_path);
+                if (origDiscs.Count == 0)
+                {
+                    System.Windows.MessageBox.Show("Valid tracks not found!");
+                    return;
+                }
+                createDefaultGroups(origDiscs);
+                GroupsListView.Items.Refresh();
+                listViewTemplate.Items.Refresh();
+                TrackslistView.Items.Refresh();
+                mserver.MainDir = sc_path;
+                createServer_Button.Visibility = Visibility.Visible;
+            }
+        }
+
+        private List<MSDisc> createDirTracksFromExp1Dir(string sc_path)
+        {
+            List<MSDisc> discs = new List<MSDisc>();
+            DirectoryInfo[] discsDirs = new DirectoryInfo(sc_path).GetDirectories();
+            if (discsDirs.Length == 0)
+            {
+                DirectoryInfo dir = new DirectoryInfo(sc_path);
+                //if (!File.Exists(dir.FullName + "//TITLE.lst")) { return discs; }
+                //FileInfo[] sc_files = dir.GetFiles("???.sc").Where((f) => Regex.IsMatch(f.Name, @"^[0-9]{3}\.sc$")).ToArray();
+                FileInfo[] sc_files = dir.GetFiles("*.sc");
+                if (sc_files.Length == 0 || sc_files.Length > 99) { return discs; }
+
+                ElenmentId discId = getNexDiscId(discs);
+                if (discId == null)
+                {
+                    System.Windows.MessageBox.Show("Can`t find new disc id for " + dir.Name + "!");
+                    return null;
+                }
+
+                string[] artName = dir.Name.Split(new string[] { " == " }, StringSplitOptions.None);
+                MSDisc disc = null;
+                // пока без Artist
+                if (artName.Length > 1)
+                {
+                    disc = new MSDisc(discId, artName[1]);
+                }
+                else if (artName.Length == 1)
+                {
+                    disc = new MSDisc(discId, artName[0]);
+                }
+                if (disc == null) { return discs; }
+                disc.Exists = true;
+                disc.OrigDirFullPath = dir.FullName;
+
+                Regex numFileName = new Regex(@"^([0-9][0-9][0-9])\.(.*)");
+                foreach (FileInfo trackFile in sc_files)
+                {
+                    Match fname = numFileName.Match(trackFile.Name);
+                    int tid = 0; string tArtist = ""; string tName = "";
+                    if (fname.Groups.Count > 2)
+                    {
+                        tid = Convert.ToInt32(fname.Groups[1].Value);
+                        string[] tArtName = fname.Groups[2].Value.Split(new string[] { " == " }, StringSplitOptions.None);
+                        if (tArtName.Length > 1)
+                        {
+                            tArtist = tArtName[0];
+                            tName = tArtName[1];
+                        }
+                        else
+                        {
+                            tName = tArtName[0];
+                        }
+                        MSTrack track = new MSTrack(
+                            disc.Id,
+                            tid,
+                            Encoding.GetEncoding(codePage).GetBytes(tName),
+                            Encoding.GetEncoding(codePage).GetBytes(tArtist)
+                        );
+                        track.Exists = true;
+                        disc.AddTrack(track);
+                    }
+                }
+
+                discs.Add(disc);
+                return discs;
+            }
+
+            foreach (DirectoryInfo dir in discsDirs)
+            {
+                FileInfo[] sc_files = dir.GetFiles("*.sc");
+                if (sc_files.Length == 0 || sc_files.Length > 99) { return discs; }
+
+                ElenmentId discId = getNexDiscId(discs);
+                if (discId == null)
+                {
+                    System.Windows.MessageBox.Show("Can`t find new disc id for " + dir.Name + "!");
+                    return null;
+                }
+
+                string[] artName = dir.Name.Split(new string[] { " == " }, StringSplitOptions.None);
+                MSDisc disc = null;
+                // пока без Artist
+                if (artName.Length > 1)
+                {
+                    disc = new MSDisc(discId, artName[1]);
+                }
+                else if (artName.Length == 1)
+                {
+                    disc = new MSDisc(discId, artName[0]);
+                }
+                if (disc == null) { return discs; }
+                disc.Exists = true;
+                disc.OrigDirFullPath = dir.FullName;
+
+                Regex numFileName = new Regex(@"^([0-9][0-9][0-9])\.(.*)");
+                foreach (FileInfo trackFile in sc_files)
+                {
+                    Match fname = numFileName.Match(trackFile.Name);
+                    int tid = 0; string tArtist = ""; string tName = "";
+                    if (fname.Groups.Count > 2)
+                    {
+                        tid = Convert.ToInt32(fname.Groups[1].Value);
+                        string[] tArtName = fname.Groups[2].Value.Split(new string[] { " == " }, StringSplitOptions.None);
+                        if (tArtName.Length > 1)
+                        {
+                            tArtist = tArtName[0];
+                            tName = tArtName[1];
+                        }
+                        else
+                        {
+                            tName = tArtName[0];
+                        }
+                        MSTrack track = new MSTrack(
+                            disc.Id,
+                            tid,
+                            Encoding.GetEncoding(codePage).GetBytes(tName),
+                            Encoding.GetEncoding(codePage).GetBytes(tArtist)
+                        );
+                        track.Exists = true;
+                        disc.AddTrack(track);
+                    }
+                }
+                discs.Add(disc);
+            }
+            return discs;
+        }
+
         //class testItem
         //{
         //	private int id;
@@ -2448,11 +2601,11 @@ namespace MMCS_MSE
 			}
 			else if (itemType.Name == "MSTrack")
 			{
-				MSTrack el = (item as MSTrack);
-				if (!el.Exists)
-				{
-					LVitem.ToolTip = "Track file not exist!\n";
-				}
+				//MSTrack el = (item as MSTrack);
+				//if (!el.Exists)
+				//{
+				//	LVitem.ToolTip = "Track file not exist!\n";
+				//}
 				//else if (el.Added)
 				//{
 				//	LVitem.ToolTip = "Track added!";
@@ -2463,10 +2616,10 @@ namespace MMCS_MSE
 				//	LVitem.ToolTip = "Track name changed!";
 				//	brush = green_brush;
 				//}
-				else
-				{
-					return LVitem.Style;
-				}
+				//else
+				//{
+				//	return LVitem.Style;
+				//}
 			}
 			else if (itemType.Name == "MSGroup")
 			{
