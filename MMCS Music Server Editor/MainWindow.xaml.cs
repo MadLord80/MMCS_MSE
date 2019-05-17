@@ -1246,10 +1246,14 @@ namespace MMCS_MSE
                             byte[] d_name = new byte[mserver.NameDesc_length];
                             Encoding.GetEncoding(codePage).GetBytes(curDisc.Name).CopyTo(d_name, 0);
                             fs.Write(d_name, 0, d_name.Length);
+                            byte[] d_artist = new byte[mserver.NameDesc_length];
+                            Encoding.GetEncoding(codePage).GetBytes(curDisc.Artist).CopyTo(d_artist, 0);
+                            fs.Position += 128 + 64 - d_name.Length;
+                            fs.Write(d_artist, 0, d_artist.Length);
 
                             // update disc checksum
                             byte[] tracksData = new byte[tracks_count * track_desc_size + track_desc_size + 8];
-                            fs.Position -= d_name.Length + 8;
+                            fs.Position -= 128 + 64 + d_artist.Length + 8;
                             fs.Read(tracksData, 0, tracksData.Length);
                             byte[] checksum = hf.checksum32bit(tracksData);
                             fs.Position -= tracksData.Length + 4;

@@ -5,7 +5,7 @@ TODO:
 - [x] fix group id
 - [x] play track with some media player
 - [x] rename tracks
-- [ ] edit artist in discs list
+- [x] edit artist in discs list
 - [ ] export discs with tracks ot tracks like "001_TRACK_NAME.sc" and when create server
 - [ ] check create server with ShiftJIS encoding
 - [ ] add dir
