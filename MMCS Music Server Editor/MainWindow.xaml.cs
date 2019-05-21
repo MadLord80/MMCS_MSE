@@ -48,7 +48,7 @@ namespace MMCS_MSE
 			InitializeComponent();
 
             string version = System.Windows.Forms.Application.ProductVersion;
-            this.Title = "MMCS Music Server Editor v." + version.Remove(version.Length - 2) + " Beta";
+            this.Title = "MMCS Music Server Editor v." + version.Remove(version.Length - 2);// + " Beta";
 
 			GridView lview = new GridView();
 			lview.Columns.Add(new GridViewColumn() { Header = "Id", Width = 30, DisplayMemberBinding = new System.Windows.Data.Binding("Id") });
