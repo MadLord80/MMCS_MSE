@@ -730,37 +730,43 @@ namespace MMCS_MSE
 		//private byte[] artist_bytes = new byte[80];
 		//private byte[] artistLoc_bytes = new byte[40];
 		private bool is_exist = true;
-		//private bool name_changed = false;
-		//private bool added = false;
-		//private bool deleted = false;
-		//for report
-		//private byte[] ldelim = new byte[8];
+        //private bool name_changed = false;
+        //private bool added = false;
+        //private bool deleted = false;
+        private string orig_track_name;
+        //for report
+        //private byte[] ldelim = new byte[8];
 
-		public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler PropertyChanged;
 
-		//public bool NameChanged
-		//{
-		//	get { return this.name_changed; }
-		//	set { this.name_changed = value; }
-		//}
-		//public bool Added
-		//{
-		//	get { return this.added; }
-		//	set { this.added = value; }
-		//}
-		//public bool Deleted
-		//{
-		//	get { return this.deleted; }
-		//	set { this.deleted = value; }
-		//}
+		public string OrigTrackName
+        {
+            get { return this.orig_track_name; }
+            set { this.orig_track_name = value; }
+        }
+        //public bool NameChanged
+        //{
+        //	get { return this.name_changed; }
+        //	set { this.name_changed = value; }
+        //}
+        //public bool Added
+        //{
+        //	get { return this.added; }
+        //	set { this.added = value; }
+        //}
+        //public bool Deleted
+        //{
+        //	get { return this.deleted; }
+        //	set { this.deleted = value; }
+        //}
 
-		//public byte[] ListDelim
-		//{
-		//	get { return this.ldelim; }
-		//	set { this.ldelim = value; }
-		//}
+        //public byte[] ListDelim
+        //{
+        //	get { return this.ldelim; }
+        //	set { this.ldelim = value; }
+        //}
 
-		public ElenmentId DiscID
+        public ElenmentId DiscID
 		{
 			get { return this.disc; }
 		}
@@ -768,6 +774,7 @@ namespace MMCS_MSE
 		public int Id
 		{
 			get { return this.id; }
+            set { this.id = value; }
 		}
 
 		public string File

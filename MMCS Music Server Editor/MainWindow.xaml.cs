@@ -1680,25 +1680,26 @@ namespace MMCS_MSE
 
 		private void TestButton_Click(object sender, RoutedEventArgs e)
 		{
-			//string discId = "2d00000a";
-			//string trackId = "032";
-			//int tid = Convert.ToInt32(trackId);
-			//string tid2 = Convert.ToString(tid);
-			//int dpf = (int)hf.HexStringToByteArray(discId.Substring(0, 2))[0];
-			//int did = (int)hf.HexStringToByteArray(discId.Substring(discId.Length - 2))[0];
-			//string discId2 = 
-			//	BitConverter.ToString(new byte[1] { (byte)did }) 
-			//	+ "0000" 
-			//	+ BitConverter.ToString(new byte[1] { (byte)dpf });
+            parseTrackName(new ElenmentId(new byte[] { 0x09, 0x00, 0x00, 0x02 }), "");
+            //string discId = "2d00000a";
+            //string trackId = "032";
+            //int tid = Convert.ToInt32(trackId);
+            //string tid2 = Convert.ToString(tid);
+            //int dpf = (int)hf.HexStringToByteArray(discId.Substring(0, 2))[0];
+            //int did = (int)hf.HexStringToByteArray(discId.Substring(discId.Length - 2))[0];
+            //string discId2 = 
+            //	BitConverter.ToString(new byte[1] { (byte)did }) 
+            //	+ "0000" 
+            //	+ BitConverter.ToString(new byte[1] { (byte)dpf });
 
-			//ObservableCollection<testItem> list1 = new ObservableCollection<testItem> {
-			//	new testItem(1), new testItem(2), new testItem(3)
-			//};
-			//testClass obj = new testClass(list1.Where((l) => l.Id == 1).First());
-			//obj.AddString(list1.Where((l) => l.Id == 2).First());
-			//obj.AddString(list1.Where((l) => l.Id == 3).First());
-			//list1.Remove(list1.Where((l) => l.Id == 2).First());
-		}
+            //ObservableCollection<testItem> list1 = new ObservableCollection<testItem> {
+            //	new testItem(1), new testItem(2), new testItem(3)
+            //};
+            //testClass obj = new testClass(list1.Where((l) => l.Id == 1).First());
+            //obj.AddString(list1.Where((l) => l.Id == 2).First());
+            //obj.AddString(list1.Where((l) => l.Id == 3).First());
+            //list1.Remove(list1.Where((l) => l.Id == 2).First());
+        }
 
 		private void ServerFromDir_Button_Click(object sender, RoutedEventArgs e)
 		{
@@ -1873,6 +1874,8 @@ namespace MMCS_MSE
 
             createServer();
             copyMoveFromDir();
+            //Mouse.OverrideCursor = null;
+            //System.Windows.MessageBox.Show("Done!");
 
             //// need copy/move process!!!
             //copyMoveProgress.Visibility = Visibility.Visible;
@@ -2269,7 +2272,6 @@ namespace MMCS_MSE
 		{
 			UpdateProgressBarDelegate updProgress = new UpdateProgressBarDelegate(copyMoveProgress.SetValue);
 			double value = 0;
-            Regex numFileName = new Regex(@"^([0-9][0-9][0-9])\.(.*)");
             foreach (MSDisc disc in groups.Where((grp) => grp.Id == 0).First().Discs)
 			{
 				string sDiscId = hf.ByteArrayToHexString(new byte[] { (byte)disc.Id.Id });
@@ -2277,10 +2279,15 @@ namespace MMCS_MSE
 				foreach (FileInfo track in new DirectoryInfo(disc.OrigDirFullPath).GetFiles("*.sc"))
 				{
                     string trackName = track.Name;
-                    Match fname = numFileName.Match(trackName);
-                    if (fname.Groups.Count > 2)
+                    if (! Regex.IsMatch(trackName, @"^[0-9][0-9][0-9]\.sc$"))
                     {
-                        trackName = fname.Groups[1] + ".sc";
+                        MSTrack otrack = disc.Tracks.Where(trk => trk.OrigTrackName == trackName).FirstOrDefault();
+                        if (otrack == null)
+                        {
+                            Dispatcher.Invoke(updProgress, new object[] { System.Windows.Controls.ProgressBar.ValueProperty, ++value });
+                            continue;
+                        }
+                        trackName = string.Format("{0,3:D3}", otrack.Id) + ".sc";
                     }
 
                     if (toCopy)
@@ -2456,11 +2463,89 @@ namespace MMCS_MSE
             }
         }
 
+        private MSTrack parseTrackName(ElenmentId discId, string trackName)
+        {
+            int tid = 0; string artist = ""; string name = "";
+            Regex reTrackName = new Regex(@"^([0-9][0-9][0-9])\.(.*) == (.*)\.sc$");
+
+            // 012.sc
+            if (Regex.IsMatch(trackName, @"^[0-9][0-9][0-9]\.sc$"))
+            {
+                name = trackName.Remove(trackName.Length - 3, 3);
+                tid = Convert.ToInt32(name);
+            }
+            // 001.Eagles == Peaceful Easy Feeling.sc
+            // 008. == $0-D0 (-B 00).sc
+            // 003.0 == .sc
+            else
+            {
+                Match tname = reTrackName.Match(trackName);
+                if (tname.Groups.Count == 4)
+                {
+                    tid = Convert.ToInt32(tname.Groups[1].Value);
+                    artist = tname.Groups[2].Value;
+                    name = tname.Groups[3].Value;
+                }
+            }
+
+            if (tid == 0)
+            {
+                System.Windows.MessageBox.Show("Can`t parse id for " + trackName + "!");
+                return null;
+            }
+
+            return new MSTrack(discId, tid,
+                Encoding.GetEncoding(codePage).GetBytes(name),
+                Encoding.GetEncoding(codePage).GetBytes(artist)
+            );
+        }
+
+        private MSDisc parseDirName(ElenmentId discId, string dirName)
+        {
+            string artist = ""; string name = "";
+            Regex reDirName = new Regex(@"^(.*) == (.*)$");
+            // 0F000001
+            if (Regex.IsMatch(dirName, @"^[0-9A-F][0-9A-F]0000[0-9A-F][0-9A-F]$"))
+            {
+                name = dirName;
+            }
+            // ATB == ATB - FUTURE MEMORIES CD2
+            //  == ATB - FUTURE MEMORIES CD2
+            // ATB == 
+            else
+            {
+                Match tname = reDirName.Match(dirName);
+                if (tname.Groups.Count == 3)
+                {
+                    artist = tname.Groups[1].Value;
+                    name = tname.Groups[2].Value;
+                }
+            }
+
+            if (artist == "" && name == "")
+            {
+                System.Windows.MessageBox.Show("Can`t parse artist and title for " + dirName + "!");
+                return null;
+            }
+
+            MSDisc disc = new MSDisc(discId, Encoding.GetEncoding(codePage).GetBytes(name));
+            disc.SetArtist(Encoding.GetEncoding(codePage).GetBytes(artist));
+            return disc;
+        }
+
+        private void fixTracksId(MSDisc disc)
+        {
+            int tid = 1;
+            foreach (MSTrack track in disc.Tracks.OrderBy((trk) => trk.Id))
+            {
+                track.Id = tid++;
+            }
+        }
+
         private List<MSDisc> createDirTracksFromExp1Dir(string sc_path)
         {
             List<MSDisc> discs = new List<MSDisc>();
             DirectoryInfo[] discsDirs = new DirectoryInfo(sc_path).GetDirectories();
-            Regex numFileName = new Regex(@"^([0-9][0-9][0-9])\.(.*)\.sc$");
 
             if (discsDirs.Length == 0)
             {
@@ -2475,42 +2560,28 @@ namespace MMCS_MSE
                     return null;
                 }
 
-                string[] artName = dir.Name.Split(new string[] { " == " }, StringSplitOptions.None);
-                MSDisc disc = (artName.Length > 1) ? new MSDisc(discId, artName[1]) : new MSDisc(discId, artName[0]);
-                if (artName.Length > 1)
-                {
-                    disc.SetArtist(Encoding.GetEncoding(codePage).GetBytes(artName[0]));
-                }
+                MSDisc disc = parseDirName(discId, dir.Name);
+                if (disc == null) { return null; }                
                 disc.Exists = true;
                 disc.OrigDirFullPath = dir.FullName;
 
                 foreach (FileInfo trackFile in sc_files)
                 {
-                    //string trackName = Regex.Replace(trackFile.Name, @"\.sc$", "");
-                    Match fname = numFileName.Match(trackFile.Name);
-                    int tid = 0; string tArtist = ""; string tName = "";
-                    if (fname.Groups.Count > 2)
+                    MSTrack track = parseTrackName(disc.Id, trackFile.Name);
+                    if (track == null)
                     {
-                        tid = Convert.ToInt32(fname.Groups[1].Value);
-                        string[] tArtName = fname.Groups[2].Value.Split(new string[] { " == " }, StringSplitOptions.None);
-                        if (tArtName.Length > 1)
-                        {
-                            tArtist = tArtName[0];
-                            tName = tArtName[1];
-                        }
-                        else
-                        {
-                            tName = tArtName[0];
-                        }
-                        MSTrack track = new MSTrack(
-                            disc.Id,
-                            tid,
-                            Encoding.GetEncoding(codePage).GetBytes(tName),
-                            Encoding.GetEncoding(codePage).GetBytes(tArtist)
+                        MessageBoxResult continue_select = System.Windows.MessageBox.Show(
+                            "Continue?",
+                            "Parse " + dir.Name + " directory",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question
                         );
-                        track.Exists = true;
-                        disc.AddTrack(track);
-                    }
+                        if (continue_select == MessageBoxResult.No) { return null; }
+                        continue;
+                    }                    
+                    track.Exists = true;
+                    track.OrigTrackName = trackFile.Name;
+                    disc.AddTrack(track);
                 }
 
                 discs.Add(disc);
@@ -2530,42 +2601,40 @@ namespace MMCS_MSE
                 }
 
                 string[] artName = dir.Name.Split(new string[] { " == " }, StringSplitOptions.None);
-                MSDisc disc = (artName.Length > 1) ? new MSDisc(discId, artName[1]) : new MSDisc(discId, artName[0]);
-                if (artName.Length > 1)
+                MSDisc disc = parseDirName(discId, dir.Name);
+                if (disc == null)
                 {
-                    disc.SetArtist(Encoding.GetEncoding(codePage).GetBytes(artName[0]));
+                    MessageBoxResult continue_select = System.Windows.MessageBox.Show(
+                            "Continue?",
+                            "Parse " + dir.Name + " directory",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question
+                        );
+                    if (continue_select == MessageBoxResult.No) { return null; }
+                    continue;
                 }
                 disc.Exists = true;
                 disc.OrigDirFullPath = dir.FullName;
 
-                //Regex numFileName = new Regex(@"^([0-9][0-9][0-9])\.(.*)");
                 foreach (FileInfo trackFile in sc_files)
                 {
-                    Match fname = numFileName.Match(trackFile.Name);
-                    int tid = 0; string tArtist = ""; string tName = "";
-                    if (fname.Groups.Count > 2)
+                    MSTrack track = parseTrackName(disc.Id, trackFile.Name);
+                    if (track == null)
                     {
-                        tid = Convert.ToInt32(fname.Groups[1].Value);
-                        string[] tArtName = fname.Groups[2].Value.Split(new string[] { " == " }, StringSplitOptions.None);
-                        if (tArtName.Length > 1)
-                        {
-                            tArtist = tArtName[0];
-                            tName = tArtName[1];
-                        }
-                        else
-                        {
-                            tName = tArtName[0];
-                        }
-                        MSTrack track = new MSTrack(
-                            disc.Id,
-                            tid,
-                            Encoding.GetEncoding(codePage).GetBytes(tName),
-                            Encoding.GetEncoding(codePage).GetBytes(tArtist)
+                        MessageBoxResult continue_select = System.Windows.MessageBox.Show(
+                            "Continue?",
+                            "Parse " + dir.Name + " directory",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question
                         );
-                        track.Exists = true;
-                        disc.AddTrack(track);
+                        if (continue_select == MessageBoxResult.No) { return null; }
+                        continue;
                     }
+                    track.Exists = true;
+                    track.OrigTrackName = trackFile.Name;
+                    disc.AddTrack(track);
                 }
+                fixTracksId(disc);
                 discs.Add(disc);
             }
             return discs;
