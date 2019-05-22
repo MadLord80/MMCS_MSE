@@ -2467,6 +2467,7 @@ namespace MMCS_MSE
         {
             int tid = 0; string artist = ""; string name = "";
             Regex reTrackName = new Regex(@"^([0-9][0-9][0-9])\.(.*) == (.*)\.sc$");
+            Regex reTrackName1 = new Regex(@"^([0-9][0-9][0-9])\.(.*)\.sc$");
 
             // 012.sc
             if (Regex.IsMatch(trackName, @"^[0-9][0-9][0-9]\.sc$"))
@@ -2480,11 +2481,17 @@ namespace MMCS_MSE
             else
             {
                 Match tname = reTrackName.Match(trackName);
+                Match tname1 = reTrackName1.Match(trackName);
                 if (tname.Groups.Count == 4)
                 {
                     tid = Convert.ToInt32(tname.Groups[1].Value);
                     artist = tname.Groups[2].Value;
                     name = tname.Groups[3].Value;
+                }
+                else if (tname1.Groups.Count == 3)
+                {
+                    tid = Convert.ToInt32(tname.Groups[1].Value);
+                    name = tname.Groups[2].Value;
                 }
             }
 
@@ -2519,6 +2526,11 @@ namespace MMCS_MSE
                 {
                     artist = tname.Groups[1].Value;
                     name = tname.Groups[2].Value;
+                }
+                // ATB
+                else
+                {
+                    name = dirName;
                 }
             }
 
