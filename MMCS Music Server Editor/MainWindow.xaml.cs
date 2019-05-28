@@ -2367,6 +2367,11 @@ namespace MMCS_MSE
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
             MSTrack track = TrackslistView.SelectedItem as MSTrack;
+            if (!track.Exists)
+            {
+                System.Windows.MessageBox.Show("Track file not exist!");
+                return;
+            }
             string dataPath = mserver.get_DATApath();
             string discId = "DATA" + track.DiscID.FullId.Remove(2);
             string dirName = track.DiscID.FullId;
