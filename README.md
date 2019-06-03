@@ -5,8 +5,15 @@ TODO:
 - [x] fix group id
 - [x] play track with some media player
 - [x] rename tracks
-- [x] edit artist in discs list
+- [x] edit artist in discs list  
+
+###########################################  
 - [x] export discs with tracks ot tracks like "001_TRACK_NAME.sc" and when create server
+- [ ] NNN for folders for sort  
+- [ ] replace non-print characters with user ones
+- [ ] add Artist to track name (MMCS not show artist for track, only for disc)
+###########################################  
+
 - [ ] check create server with ShiftJIS encoding
 - [ ] add dir
 - [ ] add track
