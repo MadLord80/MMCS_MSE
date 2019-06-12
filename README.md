@@ -9,6 +9,7 @@ TODO:
 
 ###########################################  
 - [x] export discs with tracks ot tracks like "001_TRACK_NAME.sc" and when create server
+- [ ] warn if dir has more then 99 tracks
 - [ ] NNN for folders for sort  
 - [ ] replace non-print characters with user ones
 - [ ] add Artist to track name (MMCS not show artist for track, only for disc)
